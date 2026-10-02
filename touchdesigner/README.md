@@ -52,12 +52,21 @@ Une lame ne peint sa tranche qu'en passant dessus : il lui faut un demi-tour.
 Par défaut (`Modehorloge = rotation`), l'image de l'animation n'avance donc
 que d'**une image par demi-tour réellement balayé** — compté en déroulant
 l'angle réel de la lame 0 (même source que les motifs, consigne ou Teensy).
-Résultat : chaque tranche est toujours peinte d'une **seule** pose cohérente,
-que la rotation soit lente, rapide, variable ou inversée ; à l'arrêt des
-moteurs, l'animation s'arrête (rien n'est balayé). À 2 tours/s, la boucle des
-300 images dure 75 s ; `Imagespardemitour` accélère ou ralentit ce couplage
-(au-delà de 1, le mélange de poses revient). Le mode `temps` (30 images/s,
-comme la simulation p5) reste disponible pour prévisualiser.
+Résultat, pour la lame 0 et toute lame au moins aussi rapide qu'elle (le cas
+du projet sauvegardé, dérives positives) : chaque point n'est peint qu'avec
+**une** pose par passage, et une tranche montre au plus **deux poses
+consécutives** (la couture tourne avec les lames) — au lieu d'un mélange de
+7 à 8 poses à 30 img/s — que la rotation soit lente, rapide, variable ou
+inversée ; à l'arrêt des moteurs, l'animation s'arrête (rien n'est balayé).
+Une lame **plus lente** que la lame 0 (ouverture d'éventail avec
+`Ouvrirenretard`, dérive négative, moteur réel plus lent) peut montrer trois
+poses ou plus le temps de la transition ; `PHASES_PANNEAUX.Figerecart` ou des
+vitesses égales redonnent la garantie partout. À 2 tours/s, la boucle des 300
+images dure 75 s ;
+`Imagespardemitour` accélère ou ralentit ce couplage (au-delà de 1, le mélange
+revient). Le mode `temps` (30 images/s, comme la simulation p5) reste là pour
+prévisualiser ; basculer d'horloge en cours de lecture peut faire sauter
+l'image courante.
 
 ## Comment ça marche
 
@@ -78,9 +87,12 @@ Glisser-déposer le fichier `.py` depuis le Finder dans le réseau
 nœud → Run Script.** C'est équivalent au Textport (les messages MESURE ne
 sont alors simplement pas visibles). Le Text DAT peut être supprimé après.
 
-- `INSTALLER_ANIMATION_CUBE.py` — installe (ré-exécutable sans danger)
-- `DESINSTALLER_ANIMATION_CUBE.py` — retire tout et restaure les expressions
-  d'origine (depuis `ANIMATION_CUBE/sauvegarde`)
+- `INSTALLER_ANIMATION_CUBE.py` — installe le cube (ré-exécutable sans danger)
+- `INSTALLER_ANNEAU_CONE.py` — installe l'anneau-cône (après le cube ; son
+  bouton se place sous « CUBE EN MARCHE »)
+- `DESINSTALLER_ANIMATION_CUBE.py` / `DESINSTALLER_ANNEAU_CONE.py` — retirent
+  tout et restaurent les expressions d'origine (désinstaller l'anneau **avant**
+  le cube si les deux doivent partir)
 
 Au Textport, `desinstaller()` (après avoir exécuté l'installateur dans la
 session) fait la même chose. Enregistrer sous ensuite.
@@ -99,6 +111,30 @@ session) fait la même chose. Enregistrer sous ensuite.
   et du rendu 3D (`rubans_choix` entrée 2), palette et style des boutons de
   `PANNEAU_COMMANDES`.
 - La table embarquée dans l'installateur redonne L et h₀ exacts en python pur.
+
+## L'anneau-cône (deuxième animation)
+
+`INSTALLER_ANNEAU_CONE.py` ajoute, sur le même principe que le cube, la
+**paroi d'un cône de révolution** (axe z, base au fond sur la lame 9, sommet
+devant sur la lame 0) dont la base et le sommet **grandissent et
+rétrécissent** de ± Amplitude — en opposition de phase par défaut : le cône
+bascule en respirant, jusqu'à s'inverser quand les rayons se croisent. La
+respiration est calée sur la rotation (8 demi-tours par cycle par défaut,
+mode temps en secours) et, un cône étant invariant par rotation, elle reste
+juste à n'importe quelle vitesse des moteurs.
+
+Un `.toe` **prêt à l'emploi** avec les deux animations est à la racine du
+dépôt : `SAISON_9_ANIMATION_CUBE_ET_ANNEAU_CONE.toe` — l'anneau y a été
+injecté directement dans le fichier (toeexpand → génération → toecollapse,
+vérifiée par re-décompression octet à octet) ; l'installateur reste la voie
+normale pour mettre à jour ou équiper une autre version du projet.
+
+Son bouton **LANCER L'ANNEAU** apparaît **sous le bouton du cube**, dans la
+section « ANIMATION CUBE », avec sa ligne d'état base/sommet. **Un
+seul maître à la fois** : allumer l'anneau coupe le cube et inversement ; tout
+décocher rend la main à la chaîne d'origine, au bit près. Réglages sur
+`/project1/scale/ANNEAU_CONE` (page Anneau) : rayons de repos (60/20 cm),
+Amplitude (25 cm), Opposition, période, épaisseur de paroi, couleur (bleu).
 
 ## Si le Textport se remplit d'erreurs `text1` / `shuffle1`
 

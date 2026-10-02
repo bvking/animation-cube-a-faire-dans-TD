@@ -494,7 +494,9 @@ CB_REMETTRE = """# Remettre -- ramene l'animation a l'image 0 (les deux horloges
 def onPulse(par):
 \tif par.name == 'Remettre':
 \t\tc = op('compteur')
-\t\tp = getattr(c.par, 'resetpulse', None) or getattr(c.par, 'reset', None)
+\t\tp = getattr(c.par, 'resetpulse', None)
+\t\tif p is None:
+\t\t\tp = getattr(c.par, 'reset', None)
 \t\tif p is not None:
 \t\t\tp.pulse()
 \t\tparent().store('rot_demitours', 0.0)
@@ -502,19 +504,22 @@ def onPulse(par):
 """
 
 CB_ROTATION = """# rotation_compteur -- compte les demi-tours REELLEMENT balayes par les lames.
-# Lit l'angle de la lame 0 dans angle_lame0 (en degres, la MEME source que les
-# motifs : consigne ou positions Teensy selon MOTIFS_LED.Anglesreels), le
+# Lit l'angle de la lame 0 dans angle_lame0 (en degres, un echantillon par
+# lame, la MEME source que les motifs : consigne ou positions Teensy selon
+# MOTIFS_LED.Anglesreels), le
 # deroule pas a pas (saut ramene dans -180..+180) et accumule en demi-tours,
 # en valeur absolue : la vitesse peut etre lente, rapide, variable ou
 # inversee, l'animation suit toujours vers l'avant.
-# C'est l'horloge du mode 'rotation' : une image par demi-tour (reglable),
-# donc une tranche toujours peinte d'une seule pose, a n'importe quelle
-# vitesse de rotation. A l'arret, l'animation s'arrete aussi -- rien n'est
-# balaye, rien ne doit changer.
+# C'est l'horloge du mode 'rotation' : une image par demi-tour (reglable)
+# DE LA LAME 0. Les lames au moins aussi rapides qu'elle ont la meme
+# garantie ; une lame plus lente (ouverture d'eventail avec Ouvrirenretard,
+# derive negative, moteur reel plus lent) peut voir la pose changer plus
+# d'une fois par passage. A l'arret, l'animation s'arrete aussi -- rien
+# n'est balaye, rien ne doit changer.
 def onCook(scriptOp):
 \tscriptOp.clear()
 \tcomp = parent()
-\t# angles_choix est UN canal de 11 echantillons (un par lame + 1) : on lit
+\t# angles_choix est UN canal multi-echantillons (un par lame) : on lit
 \t# explicitement l'echantillon 0 (lame 0). float(canal) sans index lirait a
 \t# l'index du temps courant -- c'est le piege que text1 contourne deja en
 \t# passant par shuffle1 (eclatement des echantillons en canaux).
@@ -547,7 +552,8 @@ LISEZ_MOI = """ANIMATION_CUBE -- LE CUBE DE cube_animatio SUR LES PANNEAUX
 CE QUE C'EST
   Les 300 poses d'un cube en fil de fer, retrouvees dans les images du
   dossier cube_animatio (depot animation-cube-a-faire-dans-TD), rejouees
-  en boucle a 30 images/s. Le cube est FIGE DANS L'ESPACE a chaque
+  en boucle : une image par demi-tour balaye par defaut (voir L'HORLOGE),
+  ou 30 images/s en mode temps. Le cube est FIGE DANS L'ESPACE a chaque
   image : les dix lames le revelent en tournant, comme le mode CHAMP 3D
   de MOTIFS_LED, et l'oeil le recompose en persistance retinienne.
 
@@ -579,13 +585,24 @@ L'HORLOGE SUIT LA ROTATION (mode par defaut)
   plusieurs poses par secteurs des que la rotation est lente. En mode
   'rotation', l'image n'avance que de Imagespardemitour (1 par defaut)
   a chaque demi-tour REELLEMENT balaye, compte sur les memes angles que
-  les motifs : chaque tranche est peinte d'une seule pose, a n'importe
-  quelle vitesse -- lente, rapide, variable ou inversee. A 2 tours/s la
-  boucle des 300 images dure 75 s ; a l'arret des moteurs, l'animation
-  s'arrete aussi. Au-dessus de 1 image par demi-tour le melange revient ;
-  en dessous (0.5 = une image par tour complet) on est encore plus sur.
-  Le mode 'temps' (Images par seconde) reste la pour previsualiser
-  l'animation a sa cadence d'origine, moteurs arretes ou non.
+  les motifs, sur LA LAME 0. Pour elle et pour toute lame au moins
+  aussi rapide (le projet sauvegarde : derives Rzdrift/Rzaudiospread
+  positives, lames 1..9 plus rapides), chaque point n'est peint qu'avec
+  UNE pose par passage et une tranche montre au plus DEUX poses
+  consecutives (la couture tourne avec les lames) -- au lieu d'un
+  melange de 7 a 8 poses a 30 img/s et 2 tours/s. Une lame PLUS LENTE
+  que la lame 0 (ouverture d'eventail avec Ouvrirenretard coche, derive
+  negative, moteur reel plus lent) peut en montrer trois ou plus le
+  temps de la transition ; garantie stricte partout avec
+  PHASES_PANNEAUX.Figerecart ou des vitesses egales. La vitesse peut
+  etre lente, rapide, variable ou inversee. A 2 tours/s la boucle des
+  300 images dure 75 s ; a l'arret des moteurs, l'animation s'arrete.
+  Au-dessus de 1 image par demi-tour le melange revient ; en dessous
+  (0.5 = une image par tour complet) on est encore plus sur.
+  Le mode 'temps' (Images par seconde) reste la pour previsualiser a la
+  cadence d'origine. Basculer d'horloge en cours de lecture peut faire
+  sauter l'image (les deux compteurs vivent chacun leur vie) ; Remettre
+  repart de l'image 0.
 
 QUI PREND LA MAIN
   Actif coche -> le switch panel_mask_output passe sur l'entree 3 : le
@@ -656,12 +673,18 @@ L'HORLOGE SUIT LA ROTATION
   L'animation n'avance pas au temps mais aux demi-tours REELLEMENT
   balayes : l'angle de la lame 0 (meme source que les motifs) est
   deroule et cumule par rotation_compteur, et l'image avance de
-  Imagespardemitour (1 par defaut) par demi-tour. Une tranche n'est
-  ainsi jamais peinte avec deux poses differentes, quelle que soit la
-  vitesse des moteurs -- lente, rapide, variable ou inversee. A l'arret
-  l'animation s'arrete, puisque rien n'est balaye. Le mode 'temps'
-  (30 images/s, comme la simulation p5) reste disponible pour
-  previsualiser.
+  Imagespardemitour (1 par defaut) par demi-tour DE LA LAME 0. Pour
+  elle et toute lame au moins aussi rapide : une pose par passage, au
+  plus deux poses par tranche, au lieu d'un melange de 7 a 8 -- vitesse
+  lente, rapide, variable ou inversee. Une lame plus lente que la
+  lame 0 (ouverture d'eventail avec Ouvrirenretard, derive negative,
+  moteur reel plus lent) peut en montrer davantage le temps de la
+  transition ; Figerecart ou des vitesses egales redonnent la garantie
+  partout. Suivre la lame la moins balayee aurait l'inconvenient
+  qu'une lame arretee fige tout : la lame 0 est un choix assume.
+  A l'arret l'animation s'arrete, puisque rien n'est balaye.
+  Le mode 'temps' (30 images/s, comme la simulation p5) reste
+  disponible pour previsualiser.
 
 MESURE A L'INSTALLATION
   Voir le textport : echelle L, demi-cote de l'image 0 (16.905 cm
@@ -783,9 +806,15 @@ def installer():
     vitesse.nodeX, vitesse.nodeY = -700, 0
     # Dans cette version le Constant CHOP range ses constantes en sequence
     # const0name/const0value (verite terrain : constant9.parm du projet) ;
-    # name0/value0 est le repli pour d'anciennes versions.
-    p_nom = getattr(vitesse.par, 'const0name', None) or getattr(vitesse.par, 'name0', None)
-    p_val = getattr(vitesse.par, 'const0value', None) or getattr(vitesse.par, 'value0', None)
+    # name0/value0 est l'alias herite. Pas de 'or' entre deux getattr : la
+    # truthiness d'un Par est sa VALEUR, et une valeur vide ecarterait le
+    # parametre canonique au profit de l'alias.
+    p_nom = getattr(vitesse.par, 'const0name', None)
+    if p_nom is None:
+        p_nom = getattr(vitesse.par, 'name0', None)
+    p_val = getattr(vitesse.par, 'const0value', None)
+    if p_val is None:
+        p_val = getattr(vitesse.par, 'value0', None)
     assert p_nom is not None and p_val is not None, \
         'Constant CHOP : parametres de la constante 0 introuvables (version TD inattendue).'
     p_nom.val = 'v'
@@ -819,7 +848,9 @@ def installer():
     # selon MOTIFS_LED.Anglesreels), deroule et cumule par rotation_compteur.
     angle_lame0 = comp.create(selectCHOP, 'angle_lame0')
     angle_lame0.nodeX, angle_lame0.nodeY = -950, -130
-    p = getattr(angle_lame0.par, 'chops', None) or getattr(angle_lame0.par, 'chop', None)
+    p = getattr(angle_lame0.par, 'chops', None)
+    if p is None:
+        p = getattr(angle_lame0.par, 'chop', None)
     assert p is not None, 'Select CHOP : parametre chops introuvable (version TD inattendue).'
     p.val = '../MOTIFS_LED/angles_choix'
     rot_cb = comp.create(textDAT, 'rotation_callbacks')
@@ -880,8 +911,9 @@ def installer():
     except Exception:
         pass
     for i, (nom, (ex, ey, ez, ew)) in enumerate(unis):
-        p_nom = (getattr(cube.par, 'vec%dname' % i, None)
-                 or getattr(cube.par, 'uniname%d' % i, None))
+        p_nom = getattr(cube.par, 'vec%dname' % i, None)
+        if p_nom is None:
+            p_nom = getattr(cube.par, 'uniname%d' % i, None)
         assert p_nom is not None, \
             'GLSL TOP : parametre de nom d uniforme introuvable (bloc %d).' % i
         p_nom.val = nom
