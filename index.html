@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>voLumen - Simulation 3D</title>
+
+    <!-- Librairies -->
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.6.0/lib/p5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.min.js"></script>
+
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        background: #000;
+        color: white;
+        font-family: Arial, sans-serif;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+        margin: 0 auto;
+      }
+      #gui {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        z-index: 100;
+      }
+      button {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        padding: 8px 16px;
+        background: #333;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        z-index: 100;
+      }
+      button:hover {
+        background: #555;
+      }
+    </style>
+</head>
+<body>
+  <!-- Le canvas p5.js sera inséré ici automatiquement -->
+
+  <!-- Les boutons et le panneau de réglages (dat.GUI) sont créés par volumetric3D.js -->
+
+  <!-- Poses des 300 cubes de l'animation, puis le programme principal -->
+  <script src="poses_cube_animatio.js"></script>
+  <script src="volumetric3D.js"></script>
+</body>
+</html>

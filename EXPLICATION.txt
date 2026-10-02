@@ -1,0 +1,440 @@
+=====================================================================
+  AFFICHEUR VOLUMÉTRIQUE À PERSISTANCE RÉTINIENNE
+  Simulation p5.js d'un cube 3D animé affiché par des panneaux de LED en rotation
+=====================================================================
+
+Ce document explique comment fonctionne tout le programme : le dispositif
+simulé, chaque fichier, les calculs, l'analyse des images qui a produit
+l'animation, les exports, et ce que la simulation montre (ou ne montre pas)
+du vrai dispositif.
+
+
+---------------------------------------------------------------------
+1. À QUOI SERT CE PROGRAMME
+---------------------------------------------------------------------
+
+Le but est de préparer un afficheur volumétrique : des panneaux de LED qui
+tournent très vite autour d'un axe. Comme l'œil garde une image environ un
+dixième de seconde (persistance rétinienne), les LED qui s'allument au bon
+moment, au bon endroit, dessinent des points lumineux dans tout le volume
+balayé par les panneaux. On peut ainsi faire apparaître un objet en vraie 3D.
+
+Le programme :
+  - simule ce dispositif à l'écran (en 3D, à vitesse ralentie) ;
+  - calcule, pour chaque position des panneaux, quelles LED allumer et en
+    quelle couleur pour faire apparaître un cube 3D ;
+  - joue une animation de 300 cubes 3D retrouvés à partir de 300 images
+    d'un cube en fil de fer (dossier cube_animatio) ;
+  - exporte les données à envoyer aux LED.
+
+
+---------------------------------------------------------------------
+2. LE DISPOSITIF SIMULÉ
+---------------------------------------------------------------------
+
+  - 10 panneaux de LED de 180 colonnes × 8 rangées, au pas de 1 cm.
+    Un panneau est donc une bande de 180 cm × 8 cm (14 400 LED en tout).
+  - Chaque panneau est posé À PLAT dans un plan perpendiculaire à l'axe de
+    rotation Z, et centré sur cet axe. L'axe passe entre les rangées 4 et 5
+    et entre les colonnes 90 et 91 : chaque panneau a donc deux
+    « demi-bandes » de 90 cm, de part et d'autre de l'axe.
+  - Les 10 panneaux sont alignés en enfilade le long de Z, un tous les
+    10 cm. Le panneau 1 est devant (côté spectateur), le panneau 10 au fond.
+  - Chaque panneau est tourné de 180° / 10 = 18° par rapport au précédent :
+    les 20 demi-bandes sont réparties régulièrement, tous les 18°
+    (cela équilibre aussi le rotor).
+  - Les 10 panneaux tournent ensemble autour de Z.
+  - Chaque panneau affiche SA PROPRE TRANCHE du volume 3D : en tournant, il
+    balaie un disque de 180 cm de diamètre à sa profondeur. Le volume
+    affichable est donc un cylindre de 180 cm de diamètre et 90 cm de
+    profondeur, découpé en 10 tranches.
+
+  Vue de face (le spectateur regarde le long de Z) :
+
+                      demi-bandes tous les 18°
+                \   |   /
+             \   \  |  /   /
+          ----------+----------   ← un panneau : 180 cm × 8 cm
+             /   /  |  \   \
+                /   |   \
+
+  Vue de profil :
+
+      spectateur  →   |  |  |  |  |  |  |  |  |  |    (10 panneaux,
+                      1  2  3  4  5  6  7  8  9  10    un tous les 10 cm)
+                      <---------- 90 cm ---------->
+
+
+---------------------------------------------------------------------
+3. LES FICHIERS
+---------------------------------------------------------------------
+
+  index.html               Page web : charge p5.js 1.6.0 et dat.GUI 0.7.9
+                           (depuis jsdelivr), puis poses_cube_animatio.js et
+                           volumetric3D.js.
+  style.css                Mise en page minimale (pas de marges).
+  volumetric3D.js          LE PROGRAMME : géométrie des panneaux, calcul des
+                           LED allumées, simulation, interface, exports.
+  poses_cube_animatio.js   Les 300 poses (position, taille, rotation) des
+                           cubes de l'animation, retrouvées dans les images.
+  analyse/analyse_cube_animatio.html
+                           Outil (page web autonome) qui recalcule
+                           poses_cube_animatio.js à partir des images.
+  analyse/analyse_cube.js  Le code de l'analyse d'image utilisé par l'outil.
+  cube_animatio/           (à ajouter) les images frame_00.png à frame_299.png.
+                           Elles ne servent qu'à l'outil d'analyse : la
+                           simulation n'utilise que poses_cube_animatio.js.
+
+Remarque : par rapport au sketch de l'éditeur p5, index.html a été nettoyé
+d'un ancien bouton « Démarrer la simulation 3D » (id toggleSimulation) qui
+ne faisait rien et restait caché sous les boutons du programme, et d'un
+<div id="gui"> vide en double.
+
+
+---------------------------------------------------------------------
+4. LANCER LE PROGRAMME
+---------------------------------------------------------------------
+
+  Dans l'éditeur p5 (editor.p5js.org) : créer un sketch avec ces 4 fichiers
+  (index.html, style.css, volumetric3D.js, poses_cube_animatio.js), puis Play.
+
+  En local : ouvrir index.html dans un navigateur (il faut une connexion
+  internet pour charger p5.js et dat.GUI). Ou bien, dans le dossier :
+        python3 -m http.server
+  puis ouvrir http://localhost:8000
+
+  Au lancement, la simulation est à l'arrêt : cliquer sur
+  « Démarrer la simulation » pour faire tourner les panneaux et jouer
+  l'animation. La souris permet de tourner autour du volume (glisser) et de
+  zoomer (molette).
+
+
+---------------------------------------------------------------------
+5. L'INTERFACE
+---------------------------------------------------------------------
+
+Boutons (en haut à gauche) :
+  - Charger des images (10 par volume) : choisir des images sur
+    l'ordinateur ; 10 images consécutives forment un volume (image 1 sur le
+    panneau 1, image 2 sur le panneau 2, etc.).
+  - Démarrer / Arrêter la simulation.
+  - Exporter le volume affiché (.bin) : les données LED du volume en cours.
+  - Exporter l'animation (.json) : les 300 poses du cube, en centimètres.
+
+Ligne d'information (sous les boutons) : source et image affichée, pas
+angulaire, nombre de LED allumées et affichées, temps de calcul par image.
+
+Réglages (panneau dat.GUI à droite), avec leur valeur par défaut :
+  Source                   Cube fixe / Animation cube_animatio (défaut) /
+                           Images chargées
+  Image n°                 image de l'animation affichée (0 à 299) ; à
+                           l'arrêt, permet de parcourir la séquence
+  Images/s           30    vitesse de l'animation
+  Demi-épaisseur arêtes 4  cm de chaque côté de l'arête (arête de 8 cm)
+  Panneaux           10
+  LED/rangée        180    colonnes par panneau
+  Rangées             8
+  Pas LED (cm)        1    écart entre deux colonnes
+  Pas rangées (cm)    1    écart entre deux rangées
+  Écart panneaux (cm) 10   distance entre deux panneaux
+  Rafraîch./tour    180    nombre de mises à jour des LED par tour
+                           (180 → une tous les 2°)
+  Tours/s             2    vitesse de rotation de la simulation
+  Persistance (s)   0.3    durée pendant laquelle un point reste visible
+                           après le passage du panneau (simulation de l'œil)
+  Taille LED        1.5    taille d'un point à l'écran (cm)
+  Seuil images       40    pour « Images chargées » : un pixel plus sombre
+                           que ce seuil donne une LED éteinte
+  Réinitialiser            recalcule le volume
+
+
+---------------------------------------------------------------------
+6. COMMENT FONCTIONNE volumetric3D.js
+---------------------------------------------------------------------
+
+6.1 Repère et unités
+--------------------
+Tout est en centimètres. Origine au centre du volume.
+  x vers la droite, y vers le bas (convention de p5.js), z vers le
+  spectateur. Le panneau 1 est à z = +45 cm, le panneau 10 à z = −45 cm.
+
+6.2 Position de chaque LED
+--------------------------
+Pour le panneau s (0 à 9), la rangée j (0 à 7) et la colonne k (0 à 179) :
+
+  décalage du panneau   a_s = s × 180° / 10              (panelOffset)
+  profondeur            z_s = (4,5 − s) × 10 cm          (panelZ)
+  long du panneau       d_k = (k − 89,5) × 1 cm          (ledDist)
+  décalage de rangée    o_j = (j − 3,5) × 1 cm           (rowOffset)
+
+Quand les panneaux ont tourné de l'angle φ, l'angle du panneau est
+θ = a_s + φ et la LED est en :
+  x = d_k × cos θ − o_j × sin θ
+  y = d_k × sin θ + o_j × cos θ
+  z = z_s
+
+6.3 Les rafraîchissements
+-------------------------
+Les LED ne changent de couleur qu'à des instants précis : R fois par tour
+(réglage « Rafraîch./tour », 180 par défaut), aux angles
+  φ_r = 360° × r / R   (r = 0 … R−1).
+Entre deux rafraîchissements, le panneau tourne de 360°/R (2° par défaut).
+L'écart entre deux passages vaut donc 2π × rayon / R : 1 cm à 30 cm du
+centre et 3,1 cm au bord avec 180 rafraîchissements, mais 7,9 cm et 23 cm
+avec 24 rafraîchissements (une mise à jour tous les 15°).
+
+Un panneau centré se retrouve sur lui-même après un demi-tour (la rangée j
+prend la place de la rangée 7 − j et la colonne k celle de 179 − k). Pour
+l'affichage, un demi-tour de rafraîchissements suffit donc à couvrir toute
+la tranche ; l'export, lui, contient le tour complet.
+
+6.4 Que doit afficher chaque LED ? (makeSampler)
+------------------------------------------------
+makeSampler() renvoie une fonction (panneau, x, y, z) → couleur [r, g, b],
+ou rien si la LED doit rester éteinte. Trois sources possibles :
+
+  a) Cube fixe
+     Un cube rouge en fil de fer, centré. Son demi-côté vaut le plus petit
+     de (demi-longueur du panneau / √2 × 0,95) et (profondeur disponible,
+     45 cm) : ses faces avant et arrière tombent sur le premier et le
+     dernier panneau. Une LED est allumée si sa distance aux 12 arêtes du
+     cube est inférieure à la demi-épaisseur des arêtes.
+
+     Distance aux arêtes (cubeEdgeDistance) : on se place dans le repère
+     du cube, demi-côté ramené à 1. Grâce à la symétrie, on prend
+     X = |x|, Y = |y|, Z = |z| ; il ne reste que 3 arêtes à tester (celles
+     qui partent du sommet (1, 1, 1)). Pour l'arête parallèle à x :
+        distance² = max(0, X−1)² + (Y−1)² + (Z−1)²
+     et de même pour y et z ; on garde la plus petite.
+
+  b) Animation cube_animatio
+     Pour l'image n° k, on lit la pose CUBE_POSES[k] = [cx, cy, s, qx, qy,
+     qz, qw, interpolée] (voir partie 7) :
+       - cx, cy : centre du cube dans l'image, s : demi-côté apparent, en
+         demi-largeurs d'image ;
+       - qx…qw : rotation du cube (quaternion), dans le repère de la caméra.
+
+     Mise à l'échelle (animationScale) : on cherche le plus grand facteur L
+     (cm par demi-largeur d'image) tel que, pour TOUTES les images, le cube
+     tienne dans le volume quelle que soit sa rotation. La demi-diagonale
+     du cube vaut s × √3 ; il faut donc
+        L × s × √3 + épaisseur ≤ 45 cm             (profondeur)
+        L × (√(cx²+cy²) + s × √3) + épaisseur ≤ 89,5 cm   (rayon du disque)
+     Avec les images actuelles, L ≈ 61 cm et le côté du cube va de 26 à
+     47 cm. La profondeur (90 cm seulement) est ce qui limite la taille.
+
+     Pose dans le volume (animationPose) : centre = (L × cx, L × cy, 0),
+     demi-côté h = L × s, rotation R = matrice du quaternion. La caméra des
+     images regarde vers le fond (z vers le fond), le volume a z vers le
+     spectateur : on retourne l'axe z en changeant le signe des termes de R
+     qui croisent z (R[2], R[5], R[6], R[7]).
+
+     Pour chaque LED p : si elle est plus loin du centre que h × √3 +
+     épaisseur, elle est éteinte (test rapide). Sinon on passe dans le
+     repère du cube : q = transposée(R) × (p − centre) / h, et la LED est
+     allumée en rouge si cubeEdgeDistance(q) × h ≤ demi-épaisseur.
+
+     Le cube tourne, se déplace et grossit comme sur les images. On garde la
+     position et la taille vues sur l'image, et le cube reste centré en
+     profondeur.
+
+  c) Images chargées
+     Le disque balayé par un panneau est mis en correspondance avec une
+     image carrée : le pixel sous la LED donne sa couleur ; s'il est plus
+     sombre que le seuil, la LED reste éteinte.
+
+6.5 Calcul du volume (processVolume)
+------------------------------------
+Pour chaque rafraîchissement r d'un demi-tour, chaque panneau s, chaque
+rangée j et chaque colonne k, on calcule la position de la LED (6.2) et on
+demande sa couleur à la fonction de 6.4. Les LED allumées sont gardées
+dans la liste « voxels » (position, couleur, angle φ du rafraîchissement).
+Par défaut : 90 × 10 × 8 × 180 = 1 296 000 LED testées par image, dont
+de l'ordre de 25 000 allumées pour l'animation.
+
+Pour rester fluide, l'écran affiche au plus 60 000 LED (au-delà, une sur
+N, et la ligne d'information le dit). Le temps de calcul est mesuré et
+affiché.
+
+6.6 Dessin et simulation (draw)
+-------------------------------
+À chaque image de l'écran :
+  - si la simulation tourne, l'angle des panneaux avance de
+    360° × Tours/s × durée écoulée ;
+  - l'animation passe à l'image suivante au rythme « Images/s ». Si le
+    calcul d'une image prend trop de temps, l'animation ralentit d'elle-même
+    (on attend au moins deux fois la durée du dernier calcul) pour que la
+    page reste utilisable ;
+  - la vue est légèrement inclinée pour voir le volume ;
+  - chaque panneau est dessiné par le contour de sa bande de 180 × 8 cm, à
+    son angle actuel ;
+  - les LED allumées sont dessinées comme des points. Les points de même
+    couleur sont dessinés ensemble (beaucoup plus rapide que des petits
+    cubes : 10 fois plus de LED affichables).
+
+Persistance simulée : un point a été peint au passage d'une demi-bande ; il
+est repeint un demi-tour plus tard. Son âge, en angle, vaut
+   âge = (angle actuel − φ) modulo 180°
+et sa luminosité vaut 1 − âge / (360° × Tours/s × Persistance). Avec
+0,3 s à 2 tours/s, chaque point reste visible presque jusqu'au passage
+suivant ; avec 0,1 s (proche de l'œil), on voit surtout le balayage.
+
+6.7 Les exports
+---------------
+a) Volume affiché (.bin)
+   Les couleurs de toutes les LED pour un tour complet, une valeur de 0 à
+   255 par composante. Ordre : rafraîchissement → panneau → rangée →
+   colonne → R, G, B. L'octet de départ d'une LED est :
+      3 × (((r × 10 + panneau) × 8 + rangée) × 180 + colonne)
+   Taille : 180 × 10 × 8 × 180 × 3 = 7 776 000 octets par volume.
+   Le décalage de 18° de chaque panneau est déjà pris en compte.
+   Comme le panneau est symétrique, les données du rafraîchissement r + 90
+   sont celles du rafraîchissement r avec rangées et colonnes inversées :
+   une carte peut ne stocker qu'un demi-tour (3,9 Mo).
+
+b) Animation (.json)
+   Les 300 volumes en binaire pèseraient plus de 2 Go. On exporte plutôt
+   les poses : pour chaque image, le centre (cm), le demi-côté (cm) et la
+   matrice de rotation, avec les réglages des panneaux. Une carte (ou
+   TouchDesigner) peut recalculer chaque LED avec la règle de 6.4 b :
+   allumée si sa distance aux arêtes du cube ≤ demi-épaisseur.
+
+6.8 Particularités liées à l'éditeur p5
+---------------------------------------
+  - L'éditeur coupe toute boucle « for (;;) » ou « while » qui dure plus de
+    100 ms (il croit à une boucle infinie et arrête le sketch). La directive
+    « // noprotect » n'est plus prise en compte. Les longues boucles sont
+    donc écrites en « for...of » sur des suites 0…n−1 (fonction seq), que
+    l'éditeur ne surveille pas.
+  - Le premier dessin WebGL compile les shaders, ce qui est lent. setup()
+    fait donc un premier dessin (une ligne, un cube, un point) hors de toute
+    boucle.
+
+
+---------------------------------------------------------------------
+7. COMMENT LES POSES ONT ÉTÉ CALCULÉES (dossier analyse/)
+---------------------------------------------------------------------
+
+Les images du dossier cube_animatio (800 × 800 pixels) montrent un cube en
+fil de fer gris sur fond noir, vu en perspective, qui tourne, se déplace et
+grossit. Sur 300 images (frame_00 à frame_299), 216 étaient disponibles.
+
+Pour chaque image, on cherche le cube 3D (côté 2, sommets en ±1) dont la
+projection en perspective recouvre le mieux les traits :
+
+  1. Préparation : l'image est réduite à 160 × 160 pixels ; les pixels
+     plus clairs que 50 (sur 255) sont des traits. On calcule une carte de
+     distances (distance de chaque pixel au trait le plus proche,
+     transformée de Felzenszwalb) et on garde environ 300 pixels de traits.
+
+  2. Projection : un sommet (X, Y, Z) de la caméra se projette en
+        u = 80 + F × X / Z,   v = 80 + F × Y / Z
+     où F est la focale (en pixels de l'image réduite).
+
+  3. Écart entre un cube et l'image (poseCost), en pixels :
+       - les 12 arêtes projetées doivent tomber sur des traits (moyenne de
+         la carte de distances le long des arêtes) ;
+       - chaque pixel de trait doit être proche d'une arête (moyenne de sa
+         distance à l'arête la plus proche).
+     La somme des deux est minimale quand le cube recouvre exactement les
+     traits, sans trait inexpliqué.
+
+  4. Optimisation (refinePose, méthode de Nelder-Mead) sur 6 paramètres :
+     3 pour la rotation, 3 pour la position.
+
+  5. Première image : recherche globale (300 à 600 rotations au hasard,
+     les 6 meilleures sont affinées).
+
+  6. Focale : plusieurs valeurs sont essayées sur la première image et sur
+     les deux plus grands cubes (là où la perspective est la plus marquée) ;
+     on garde celle qui donne le plus petit écart (165 px ici).
+
+  7. Suivi (trackFit) : chaque image part de la pose de l'image précédente,
+     de sa version « retournée » (ambiguïté avant/arrière d'un dessin en fil
+     de fer) et de quelques variantes au hasard, d'autant plus éloignées
+     qu'il manque d'images entre les deux.
+
+  8. Continuité : un cube a 24 rotations qui donnent le même dessin. Pour
+     chaque image, on garde celle qui est la plus proche de l'image
+     précédente, pour que l'animation ne saute pas.
+
+  9. Images manquantes : la position et la taille sont interpolées
+     linéairement entre les images voisines, la rotation par interpolation
+     sphérique (slerp). Ces lignes ont la valeur 1 en dernière colonne.
+
+Résultat : écart moyen de 0,8 à 1,6 pixel selon les images, aucun saut de
+rotation d'une image à l'autre. Sur une séquence de test synthétique (poses
+connues), l'outil retrouve la bonne focale et la rotation à 1,5° près.
+
+Pour refaire l'analyse (par exemple après avoir ajouté les images
+manquantes) : ouvrir analyse/analyse_cube_animatio.html dans un navigateur,
+choisir toutes les images du dossier cube_animatio, attendre la fin (1 à 2
+minutes), télécharger poses_cube_animatio.js et remplacer l'ancien.
+
+
+---------------------------------------------------------------------
+8. CE QUE LA SIMULATION MONTRE… ET NE MONTRE PAS
+---------------------------------------------------------------------
+
+Fidèle :
+  - la position de chaque LED allumée et sa couleur sont calculées avec
+    exactement la même fonction que l'export .bin ;
+  - l'effet du nombre de rafraîchissements par tour, du nombre de rangées,
+    des écarts, etc. est visible et chiffré dans la ligne d'information.
+
+Idéalisé :
+  - chaque nouvelle image de l'animation apparaît d'un coup, en entier. En
+    vrai, un panneau ne peint un endroit que quand il passe dessus : il lui
+    faut un demi-tour pour peindre toute sa tranche. À 2 tours/s, cela fait
+    au plus 4 volumes complets par seconde ; à 30 images/s on verrait un
+    mélange de plusieurs images, chacune sur un secteur ;
+  - la persistance est un réglage, pas l'œil réel (environ 0,1 s).
+
+Ordres de grandeur pour le vrai dispositif :
+  - chaque tranche n'est balayée que par son propre panneau. Les 8 rangées
+    passent sur un point presque en même temps (elles ne sont qu'à 1 cm
+    l'une de l'autre) : à 2 tours/s, l'œil voit 4 éclairs par seconde, donc
+    un clignotement. Il faut environ 10 à 12 tours/s pour 20 à 25 passages
+    par seconde. Le décalage de 18° entre panneaux ne change rien pour des
+    tranches indépendantes ;
+  - à 180 rafraîchissements par tour et 10 tours/s : 1 800 mises à jour par
+    seconde de 14 400 LED, soit environ 26 millions de LED par seconde
+    (bien au-delà d'une ligne de LED WS2812, il faudra des LED à horloge et
+    de nombreuses lignes en parallèle) ;
+  - la vitesse en bout de panneau (rayon 90 cm) est d'environ 57 m/s à
+    10 tours/s : prévoir un carter de protection ;
+  - la résolution est surtout limitée par la profondeur (10 tranches tous
+    les 10 cm), bien plus que par le pas angulaire (1 à 3 cm à 2°).
+
+
+---------------------------------------------------------------------
+9. PISTES POUR REFAIRE L'ANIMATION DANS TOUCHDESIGNER
+---------------------------------------------------------------------
+
+Le plus simple est de partir de l'export « Exporter l'animation (.json) »
+(ou de poses_cube_animatio.js, qui contient les mêmes informations) :
+  - charger les 300 poses dans une table (Table DAT, ou lecture du JSON en
+    Python) et choisir la ligne avec un compteur d'images ;
+  - construire la géométrie des LED : 10 panneaux × 8 rangées × 180
+    colonnes, avec les formules de 6.2 (par exemple un Script CHOP ou SOP
+    en Python, puis de l'instancing dans un Geometry COMP) ;
+  - pour la couleur de chaque LED, appliquer la règle de 6.4 b (passage
+    dans le repère du cube, distance aux arêtes ≤ demi-épaisseur), en
+    Python avec numpy ou dans un shader GLSL pour aller plus vite ;
+  - faire tourner l'ensemble autour de z, et simuler la persistance avec
+    un Feedback TOP qui atténue l'image précédente.
+
+
+---------------------------------------------------------------------
+10. HISTORIQUE DES CHOIX
+---------------------------------------------------------------------
+
+  1. Anneaux concentriques tournant autour de leur centre : la résolution
+     dépendait du nombre d'anneaux (10 anneaux espacés de 4,5 cm ne
+     suffisaient pas pour des traits fins).
+  2. Rubans droits de 180 LED, en enfilade, tournés de 18° : chaque ruban
+     affiche une tranche d'un volume 3D.
+  3. Panneaux de 180 × 8 LED à plat dans leur tranche : plus de lumière et
+     8 points par passage au lieu d'un.
+  4. Cube 3D retrouvé dans chaque image de cube_animatio, puis séquencé.
+  5. Simulation à 2 tours/s pour pouvoir observer le balayage.
