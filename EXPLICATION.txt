@@ -10,6 +10,51 @@ du vrai dispositif.
 
 
 ---------------------------------------------------------------------
+EN RÉSUMÉ : D'OÙ VIENNENT LES CUBES ROUGES ?
+---------------------------------------------------------------------
+
+Avec la source « Animation cube_animatio » (la source par défaut), chaque
+cube rouge en 3D est construit à partir d'une image du dossier
+cube_animatio : l'image n° k donne le cube n° k de l'animation.
+
+Ce qui vient des images :
+  - la rotation du cube (son orientation en 3D) ;
+  - sa position (le centre du cube dans l'image donne sa position
+    gauche-droite et haut-bas dans le volume) ;
+  - sa taille (la taille apparente du cube dans l'image donne la taille
+    du cube dans le volume).
+Ces trois informations ont été retrouvées une fois pour toutes par
+l'analyse des images (partie 7) et rangées dans poses_cube_animatio.js :
+la simulation ne relit pas les images, elle lit ce fichier.
+
+Ce qui ne vient PAS des images :
+  - la couleur rouge (choisie) ;
+  - l'épaisseur des arêtes : le curseur « Demi-épaisseur arêtes » (1 à
+    10 cm de chaque côté de l'arête, 4 cm par défaut) règle quelles LED
+    s'allument autour de chaque arête. L'épaisseur des traits gris des
+    images n'est pas utilisée. Changer l'épaisseur ne modifie ni la
+    rotation ni la position des cubes ; l'échelle de toute l'animation est
+    seulement un peu réduite quand les arêtes s'épaississent, pour que les
+    cubes tiennent toujours dans le volume ;
+  - la profondeur : le cube reste centré entre le premier et le dernier
+    panneau ;
+  - l'échelle générale, calculée pour que tous les cubes tiennent dans le
+    volume (environ 61 cm par demi-largeur d'image).
+
+Images manquantes : sur les 300 images, 216 étaient présentes. Les 84
+cubes manquants sont calculés entre leurs voisins ; la ligne
+d'information l'indique (« image 12 (interpolée) »).
+
+La source « Cube fixe », elle, n'utilise pas les images : c'est un seul
+cube immobile, centré.
+
+Si les images changent (ou si on ajoute les images manquantes), il faut
+relancer l'outil analyse/analyse_cube_animatio.html pour refaire
+poses_cube_animatio.js : sans cela, les cubes rouges restent ceux des
+anciennes images.
+
+
+---------------------------------------------------------------------
 1. À QUOI SERT CE PROGRAMME
 ---------------------------------------------------------------------
 
@@ -81,9 +126,10 @@ Le programme :
                            Outil (page web autonome) qui recalcule
                            poses_cube_animatio.js à partir des images.
   analyse/analyse_cube.js  Le code de l'analyse d'image utilisé par l'outil.
-  cube_animatio/           (à ajouter) les images frame_00.png à frame_299.png.
-                           Elles ne servent qu'à l'outil d'analyse : la
-                           simulation n'utilise que poses_cube_animatio.js.
+  cube_animatio/           Dossier des images frame_00.png à frame_299.png
+                           (avec un fichier LISEZMOI.txt). Elles ne servent
+                           qu'à l'outil d'analyse : la simulation n'utilise
+                           que poses_cube_animatio.js.
 
 Remarque : par rapport au sketch de l'éditeur p5, index.html a été nettoyé
 d'un ancien bouton « Démarrer la simulation 3D » (id toggleSimulation) qui
