@@ -22,3 +22,5 @@ Simulation en JavaScript ([p5.js](https://p5js.org)) d'un afficheur volumétriqu
 | `analyse/analyse_cube.js` | Code de l'analyse d'image utilisé par l'outil |
 | `cube_animatio/` | Les images `frame_00.png` … `frame_299.png` (seulement utiles pour l'outil d'analyse) |
 | `PROMPT_TouchDesigner_afficheur.md` | Prompt pour faire construire la version TouchDesigner (10 panneaux de 160 × 8 LED, sortie vers l'ESP32) par une IA reliée à TouchDesigner |
+| `touchdesigner/` | Option « animation-cube » pour le projet TouchDesigner SAISON_9 : installateur à exécuter dans le Textport, mode d'emploi ([touchdesigner/README.md](touchdesigner/README.md)) et vérifications. Ajoute un bouton dans la fenêtre SORTIE_SPECTACLE |
+| `SAISON_9_ANIMATION_CUBE.toe` | Le projet TouchDesigner du spectacle (issu de SAISON_9_MOINS_DE_PY_ANNEAUX_SEULS_SANS_VARIATIONS.2), avec l'option animation-cube déjà installée et active ; ré-exécuter l'installateur pour les mises à jour |
