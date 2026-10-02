@@ -1,0 +1,21 @@
+DOSSIER DES IMAGES DE L'ANIMATION
+=================================
+
+Dépose ici les images frame_00.png à frame_299.png : un cube en fil de fer
+gris sur fond noir, vu en perspective (800 × 800 pixels).
+
+  - Le numéro de chaque image est lu dans le nom du fichier.
+  - Il peut en manquer : les cubes manquants sont calculés entre leurs voisins.
+
+Ces images servent à l'outil analyse/analyse_cube_animatio.html, qui en
+déduit la rotation, la position et la taille de chaque cube, et produit le
+fichier poses_cube_animatio.js. La simulation (volumetric3D.js) n'utilise que
+ce fichier de poses : après avoir changé ou ajouté des images, relance l'outil
+puis remplace poses_cube_animatio.js à la racine du dépôt.
+
+Sur GitHub, on ne peut téléverser que 100 fichiers à la fois par la page
+« Upload files » : envoie les images en plusieurs fois (par exemple 0 à 99,
+100 à 199, puis 200 à 299).
+
+Ce fichier sert aussi à ce que GitHub garde le dossier (un dossier vide n'est
+pas enregistré). Tu peux le laisser.
