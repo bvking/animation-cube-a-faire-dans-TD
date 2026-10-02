@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analyse des images cube_animatio</title>
+  <style>
+    body { background: #111; color: #ddd; font-family: Arial, sans-serif; margin: 20px; max-width: 900px; }
+    h1 { font-size: 20px; }
+    p, li { line-height: 1.5; }
+    code { background: #222; padding: 1px 4px; }
+    button, input { font-size: 14px; margin: 6px 0; }
+    #progress { margin: 12px 0; font-weight: bold; }
+    #preview { background: #000; border: 1px solid #333; }
+    #log { white-space: pre-wrap; font-family: monospace; font-size: 12px; color: #aaa; max-height: 220px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1>Analyse des images du dossier cube_animatio → poses_cube_animatio.js</h1>
+  <p>
+    Cette page retrouve, pour chaque image d'un cube en fil de fer, la rotation, la position et la taille
+    du cube 3D qui a servi à la dessiner. Elle produit le fichier <code>poses_cube_animatio.js</code>
+    utilisé par la simulation (<code>volumetric3D.js</code>).
+  </p>
+  <ol>
+    <li>Choisis toutes les images du dossier <code>cube_animatio</code> (frame_00.png … frame_299.png).
+        Le numéro de l'image est lu dans le nom du fichier ; il peut en manquer.</li>
+    <li>Attends la fin de l'analyse (environ 1 à 2 minutes pour 200 images).</li>
+    <li>Télécharge le fichier et remplace celui du projet.</li>
+  </ol>
+  <input type="file" id="files" multiple accept="image/*">
+  <div id="progress">En attente des images…</div>
+  <button id="download" disabled>Télécharger poses_cube_animatio.js</button>
+  <br>
+  <canvas id="preview" width="320" height="320"></canvas>
+  <div id="log"></div>
+
+  <script src="analyse_cube.js"></script>
+  <script>
+    const S = 160;                 // taille de travail des images (pixels)
+    const FOCALES = [110, 125, 139, 146, 155, 165, 180, 200];   // focales essayées (pixels de l'image de travail)
+    let posesText = null;
+
+    const $ = id => document.getElementById(id);
+    const log = msg => { $('log').textContent += msg + '\n'; $('log').scrollTop = 1e9; };
+    const progress = msg => { $('progress').textContent = msg; };
+    const tick = () => new Promise(r => setTimeout(r, 0));
+
+    function loadFile(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('Image illisible : ' + file.name));
+        img.src = url;
+      });
+    }
+
+    // Dessine l'image et, en rouge, le cube retrouvé
+    function drawPreview(img, fit, F) {
+      const c = $('preview'), g = c.getContext('2d'), W = c.width;
+      g.drawImage(img, 0, 0, W, W);
+      const f = F * W / S;
+      const P = CUBE_V.map(v => {
+        const R = fit.R, T = fit.T;
+        const X = R[0] * v[0] + R[1] * v[1] + R[2] * v[2] + T[0];
+        const Y = R[3] * v[0] + R[4] * v[1] + R[5] * v[2] + T[1];
+        const Z = R[6] * v[0] + R[7] * v[1] + R[8] * v[2] + T[2];
+        return [W / 2 + f * X / Z, W / 2 + f * Y / Z];
+      });
+      g.strokeStyle = 'rgba(255,40,40,0.95)';
+      g.lineWidth = 2;
+      for (const [i, j] of CUBE_E) { g.beginPath(); g.moveTo(P[i][0], P[i][1]); g.lineTo(P[j][0], P[j][1]); g.stroke(); }
+    }
+
+    // Matrice de rotation → quaternion [x, y, z, w]
+    function quat(m) {
+      const tr = m[0] + m[4] + m[8];
+      let w, x, y, z;
+      if (tr > 0) { const s = Math.sqrt(tr + 1) * 2; w = 0.25 * s; x = (m[7] - m[5]) / s; y = (m[2] - m[6]) / s; z = (m[3] - m[1]) / s; }
+      else if (m[0] > m[4] && m[0] > m[8]) { const s = Math.sqrt(1 + m[0] - m[4] - m[8]) * 2; w = (m[7] - m[5]) / s; x = 0.25 * s; y = (m[1] + m[3]) / s; z = (m[2] + m[6]) / s; }
+      else if (m[4] > m[8]) { const s = Math.sqrt(1 + m[4] - m[0] - m[8]) * 2; w = (m[2] - m[6]) / s; x = (m[1] + m[3]) / s; y = 0.25 * s; z = (m[5] + m[7]) / s; }
+      else { const s = Math.sqrt(1 + m[8] - m[0] - m[4]) * 2; w = (m[3] - m[1]) / s; x = (m[2] + m[6]) / s; y = (m[5] + m[7]) / s; z = 0.25 * s; }
+      return [x, y, z, w];
+    }
+
+    // Interpolation sphérique entre deux rotations (quaternions)
+    function slerp(a, b, t) {
+      let d = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+      if (d < 0) { b = b.map(v => -v); d = -d; }
+      if (d > 0.9995) { const r = a.map((v, i) => v + t * (b[i] - v)); const L = Math.hypot(...r); return r.map(v => v / L); }
+      const th = Math.acos(d), s = Math.sin(th);
+      return a.map((v, i) => (Math.sin((1 - t) * th) * v + Math.sin(t * th) * b[i]) / s);
+    }
+
+    // Construit le texte de poses_cube_animatio.js (même format que dans le projet)
+    function buildPosesText(fits, F, total) {
+      const nums = Object.keys(fits).map(Number).sort((a, b) => a - b);
+      const H2 = S / 2;
+      // Le cube est symétrique : pour chaque image on garde, parmi les 24 rotations équivalentes,
+      // celle qui est la plus proche de la précédente (animation continue)
+      const Rc = {};
+      let prevR = null;
+      for (const n of nums) { Rc[n] = prevR ? closestEquivalent(fits[n].R, prevR) : fits[n].R; prevR = Rc[n]; }
+      const poseOf = n => { const T = fits[n].T; return { cx: F * T[0] / T[2] / H2, cy: F * T[1] / T[2] / H2, s: F / T[2] / H2, q: quat(Rc[n]) }; };
+      const rows = [];
+      let prevQ = null;
+      for (let k = 0; k < total; k++) {
+        let p, interp = 0;
+        if (fits[k]) p = poseOf(k);
+        else {
+          interp = 1;
+          const before = nums.filter(n => n < k).pop(), after = nums.find(n => n > k);
+          if (before === undefined) p = poseOf(after);
+          else if (after === undefined) p = poseOf(before);
+          else {
+            const pa = poseOf(before), pb = poseOf(after), t = (k - before) / (after - before);
+            p = { cx: pa.cx + t * (pb.cx - pa.cx), cy: pa.cy + t * (pb.cy - pa.cy), s: pa.s + t * (pb.s - pa.s), q: slerp(pa.q, pb.q, t) };
+          }
+        }
+        let q = p.q;
+        if (prevQ && q[0] * prevQ[0] + q[1] * prevQ[1] + q[2] * prevQ[2] + q[3] * prevQ[3] < 0) q = q.map(v => -v);
+        prevQ = q;
+        rows.push([p.cx, p.cy, p.s, ...q].map(v => v.toFixed(4)).concat([String(interp)]));
+      }
+      const lines = rows.map((r, k) => '  [' + r.join(', ') + '],' + ' '.repeat(Math.max(1, 64 - r.join(', ').length)) + '// ' + k);
+      return [
+        "// Poses 3D des cubes retrouvées dans les images du dossier cube_animatio.",
+        "// Pour chaque image, on a cherché le cube en fil de fer qui, projeté en perspective,",
+        "// recouvre le mieux les traits de l'image (focale " + F + " px pour une image ramenée à " + S + " px).",
+        "// Une ligne par image (0 à " + (total - 1) + ") : [cx, cy, s, qx, qy, qz, qw, interpolée]",
+        "//   cx, cy : centre du cube dans l'image, en demi-largeurs d'image (-1 = bord gauche/haut, +1 = bord droit/bas)",
+        "//   s      : demi-côté apparent du cube, en demi-largeurs d'image",
+        "//   qx..qw : rotation du cube (quaternion), repère de la caméra (x à droite, y vers le bas, z vers le fond)",
+        "//   interpolée : 1 si l'image manquait ; sa pose est calculée entre les images voisines",
+        "const CUBE_POSES = [",
+        ...lines,
+        "];",
+        ""
+      ].join('\n');
+    }
+
+    async function run(fileList) {
+      $('download').disabled = true;
+      $('log').textContent = '';
+      const t0 = performance.now();
+      const list = Array.from(fileList)
+        .filter(f => f.type.startsWith('image/'))
+        .map(f => { const m = f.name.match(/(\d+)\D*$/); return { file: f, num: m ? Number(m[1]) : NaN }; })
+        .filter(it => !isNaN(it.num))
+        .sort((a, b) => a.num - b.num);
+      if (list.length === 0) { progress('Aucune image numérotée trouvée.'); return; }
+
+      // 1. Lecture et préparation des images
+      for (const [i, it] of list.entries()) {
+        it.img = await loadFile(it.file);
+        it.im = analyzeCubeImage(it.img, S);
+        if (!it.im) log('Pas de traits trouvés dans ' + it.file.name + ' : image ignorée');
+        if (i % 10 === 0) { progress(`Lecture des images : ${i + 1}/${list.length}`); await tick(); }
+      }
+      const ok = list.filter(it => it.im);
+
+      // 2. Focale : on essaie plusieurs valeurs sur la première image et les deux plus grands cubes
+      const probes = [ok[0], ...ok.slice(1).sort((a, b) => b.im.size - a.im.size).slice(0, 2)];
+      let best = null;
+      for (const F of FOCALES) {
+        let tot = 0;
+        for (const it of probes) { tot += globalFit(it.im, F, makeRandom(3), 400).cost; await tick(); }
+        log(`Focale ${F} px : écart moyen ${(tot / probes.length).toFixed(3)} px`);
+        if (!best || tot < best.tot) best = { F: F, tot: tot };
+        progress(`Recherche de la focale… (${F} px)`);
+      }
+      const F = best.F;
+      log(`→ focale retenue : ${F} px`);
+
+      // 3. Suivi image par image (on part de la pose de l'image précédente)
+      const fits = {};
+      const rnd = makeRandom(7);
+      let prev = globalFit(ok[0].im, F, makeRandom(1), 600), prevNum = ok[0].num;
+      fits[ok[0].num] = prev;
+      for (const [i, it] of ok.entries()) {
+        if (i === 0) continue;
+        const fit = trackFit(it.im, F, prev, it.num - prevNum, rnd);
+        fits[it.num] = fit;
+        prev = fit; prevNum = it.num;
+        if (i % 3 === 0) { drawPreview(it.img, fit, F); progress(`Analyse : image ${it.num} (${i + 1}/${ok.length}), écart ${fit.cost.toFixed(2)} px`); await tick(); }
+      }
+      const costs = Object.values(fits).map(f => f.cost).sort((a, b) => a - b);
+      log(`Écart entre cube retrouvé et traits : de ${costs[0].toFixed(2)} à ${costs[costs.length - 1].toFixed(2)} px (médiane ${costs[costs.length >> 1].toFixed(2)})`);
+
+      // 4. Fichier de poses (les images manquantes sont interpolées)
+      const total = list[list.length - 1].num + 1;
+      posesText = buildPosesText(fits, F, total);
+      $('download').disabled = false;
+      progress(`Terminé en ${((performance.now() - t0) / 1000).toFixed(0)} s : ${ok.length} images analysées, ${total - ok.length} interpolées.`);
+    }
+
+    $('files').addEventListener('change', e => run(e.target.files).catch(err => progress('Erreur : ' + err.message)));
+    $('download').addEventListener('click', () => {
+      const blob = new Blob([posesText], { type: 'text/javascript' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'poses_cube_animatio.js';
+      a.click();
+    });
+  </script>
+</body>
+</html>
