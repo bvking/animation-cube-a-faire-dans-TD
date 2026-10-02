@@ -20,4 +20,5 @@ Simulation en JavaScript ([p5.js](https://p5js.org)) d'un afficheur volumétriqu
 | `poses_cube_animatio.js` | Les 300 poses (position, taille, rotation) des cubes de l'animation |
 | `analyse/analyse_cube_animatio.html` | Outil pour recalculer les poses à partir des images |
 | `analyse/analyse_cube.js` | Code de l'analyse d'image utilisé par l'outil |
-| `cube_animatio/` | Les images `frame_00.png` … `frame_299.png` (à ajouter ; seulement utiles pour l'outil d'analyse) |
+| `cube_animatio/` | Les images `frame_00.png` … `frame_299.png` (seulement utiles pour l'outil d'analyse) |
+| `PROMPT_TouchDesigner_afficheur.md` | Prompt pour faire construire la version TouchDesigner (10 panneaux de 160 × 8 LED, sortie vers l'ESP32) par une IA reliée à TouchDesigner |
