@@ -24,7 +24,7 @@ let images = [];          // images chargées (100x100) : 10 images consécutive
 let currentVolume = 0;    // volume d'images affiché
 let volumeCount = 0;
 let imagesLoaded = false;
-let isSimulating = false;
+let isSimulating = true;  // la simulation démarre toute seule au chargement de la page
 let lastFrameTime = 0;
 let lastAnimationTime = 0;
 let rotationAngle = 0;
@@ -167,6 +167,7 @@ function setup() {
 
   processVolume(); // volume prêt dès le démarrage
   lastFrameTime = millis();
+  lastAnimationTime = millis(); // l'animation démarre dès le chargement (isSimulating vaut true)
 }
 
 // Les boutons p5 ne doivent pas non plus faire tourner la vue
@@ -192,7 +193,7 @@ function createLoadButton() {
 }
 
 function createSimButton() {
-  const simButton = createButton('Démarrer la simulation');
+  const simButton = createButton(isSimulating ? 'Arrêter la simulation' : 'Démarrer la simulation');
   simButton.position(10, 40);
   protectFromOrbit(simButton);
   simButton.mousePressed(() => {

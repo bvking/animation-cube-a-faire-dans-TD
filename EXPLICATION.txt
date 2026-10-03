@@ -149,10 +149,11 @@ ne faisait rien et restait caché sous les boutons du programme, et d'un
         python3 -m http.server
   puis ouvrir http://localhost:8000
 
-  Au lancement, la simulation est à l'arrêt : cliquer sur
-  « Démarrer la simulation » pour faire tourner les panneaux et jouer
-  l'animation. La souris permet de tourner autour du volume (glisser) et de
-  zoomer (molette).
+  La simulation démarre toute seule au chargement de la page (et à chaque
+  actualisation, ou à chaque Play dans l'éditeur p5) : les panneaux
+  tournent et l'animation se joue. Le bouton « Arrêter la simulation » la
+  met en pause, « Démarrer la simulation » la relance. La souris permet de
+  tourner autour du volume (glisser) et de zoomer (molette).
 
 
 ---------------------------------------------------------------------
@@ -163,7 +164,7 @@ Boutons (en haut à gauche) :
   - Charger des images (10 par volume) : choisir des images sur
     l'ordinateur ; 10 images consécutives forment un volume (image 1 sur le
     panneau 1, image 2 sur le panneau 2, etc.).
-  - Démarrer / Arrêter la simulation.
+  - Arrêter / Démarrer la simulation (elle tourne dès le chargement).
   - Exporter le volume affiché (.bin) : les données LED du volume en cours.
   - Exporter l'animation (.json) : les 300 poses du cube, en centimètres.
 
