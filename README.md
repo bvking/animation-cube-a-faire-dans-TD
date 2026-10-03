@@ -23,5 +23,6 @@ Simulation en JavaScript ([p5.js](https://p5js.org)) d'un afficheur volumétriqu
 | `cube_animatio/` | Les images `frame_00.png` … `frame_299.png` (seulement utiles pour l'outil d'analyse) |
 | `PROMPT_TouchDesigner_afficheur.md` | Prompt pour faire construire la version TouchDesigner (10 panneaux de 160 × 8 LED, sortie vers l'ESP32) par une IA reliée à TouchDesigner |
 | `touchdesigner/` | Option « animation-cube » pour le projet TouchDesigner SAISON_9 : installateur à exécuter dans le Textport, mode d'emploi ([touchdesigner/README.md](touchdesigner/README.md)) et vérifications. Ajoute un bouton dans la fenêtre SORTIE_SPECTACLE |
-| `SAISON_9_ANIMATION_CUBE_ET_ANNEAU_CONE.toe` | **Le projet prêt à l'emploi** : animation-cube et anneau-cône respirant, chacun sur son bouton dans SORTIE_SPECTACLE (un seul maître à la fois ; l'anneau a été injecté directement dans le fichier, vérifié par re-décompression) |
+| `SAISON_9_CUBE_ANNEAU_VASARELY.toe` | **Le projet prêt à l'emploi** : animation-cube, anneau-cône respirant et grille op-art Vasarely, chacun sur son bouton dans SORTIE_SPECTACLE (un seul maître à la fois ; modules injectés directement dans le fichier, vérifiés par re-décompression) |
+| `SAISON_9_ANIMATION_CUBE_ET_ANNEAU_CONE.toe` | Version précédente : cube + anneau seulement |
 | `SAISON_9_ANIMATION_CUBE.toe` | Version précédente, cube seul (issu de SAISON_9_MOINS_DE_PY_ANNEAUX_SEULS_SANS_VARIATIONS.2) ; sert aussi de sauvegarde d'avant l'anneau |

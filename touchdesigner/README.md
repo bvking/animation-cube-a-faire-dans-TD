@@ -90,9 +90,12 @@ sont alors simplement pas visibles). Le Text DAT peut être supprimé après.
 - `INSTALLER_ANIMATION_CUBE.py` — installe le cube (ré-exécutable sans danger)
 - `INSTALLER_ANNEAU_CONE.py` — installe l'anneau-cône (après le cube ; son
   bouton se place sous « CUBE EN MARCHE »)
-- `DESINSTALLER_ANIMATION_CUBE.py` / `DESINSTALLER_ANNEAU_CONE.py` — retirent
-  tout et restaurent les expressions d'origine (désinstaller l'anneau **avant**
-  le cube si les deux doivent partir)
+- `INSTALLER_VASARELY.py` — installe l'effet Vasarely (après les deux autres ;
+  son bouton se place sous « LANCER L'ANNEAU »)
+- `DESINSTALLER_ANIMATION_CUBE.py` / `DESINSTALLER_ANNEAU_CONE.py` /
+  `DESINSTALLER_VASARELY.py` — retirent tout et restaurent les expressions
+  d'origine (désinstaller dans l'ordre inverse d'installation : Vasarely,
+  puis l'anneau, puis le cube)
 
 Au Textport, `desinstaller()` (après avoir exécuté l'installateur dans la
 session) fait la même chose. Enregistrer sous ensuite.
@@ -135,6 +138,27 @@ seul maître à la fois** : allumer l'anneau coupe le cube et inversement ; tout
 décocher rend la main à la chaîne d'origine, au bit près. Réglages sur
 `/project1/scale/ANNEAU_CONE` (page Anneau) : rayons de repos (60/20 cm),
 Amplitude (25 cm), Opposition, période, épaisseur de paroi, couleur (bleu).
+
+## L'effet Vasarely (troisième animation)
+
+`INSTALLER_VASARELY.py` ajoute une **grille op-art bombée/creusée** dans
+l'esprit de la série Vega de Vasarely : N × N cellules colorées (carrés,
+cercles, damier ou quadrillage, deux rampes de couleurs le long de la
+diagonale), déformées par une ou plusieurs calottes sphériques (1 au centre
+déplaçable, 2×2, 3×3, ou 2×2 bosses/creux alternés), avec un ombrage plat par
+cellule qui vend le relief. Le tableau est **figé dans le plan frontal** du
+disque balayé (comme le mode TABLEAU) ; le rendu est **par pixel en sens
+inverse** : chaque texel défait la déformation (asin pour une bosse, sin pour
+un creux — formules inverses vérifiées à 5 × 10⁻¹⁶) pour retrouver sa cellule.
+Le relief **respire** (relief × cos de la phase), calé sur les demi-tours
+réellement balayés (8 par cycle par défaut). Un `.toe` prêt à l'emploi avec
+les **trois** animations est à la racine : `SAISON_9_CUBE_ANNEAU_VASARELY.toe`.
+
+Son bouton **LANCER VASARELY** apparaît **sous LANCER L'ANNEAU** ; chaque
+bouton coupe les deux autres. Réglages sur `/project1/scale/VASARELY`, page
+Vasarely : Relief (−90…90°, défaut 80), Rayon (0,84), Densité (20), Ombrage
+(0,4), Motif, Disposition, Centre X/Y, Palette (vega / braise / nuit),
+Animer, Demi-tours par cycle, Période, Luminosité.
 
 ## Si le Textport se remplit d'erreurs `text1` / `shuffle1`
 
