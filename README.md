@@ -7,7 +7,7 @@ Simulation en JavaScript ([p5.js](https://p5js.org)) d'un afficheur volumétriqu
 ## Lancer
 
 - Ouvrir `index.html` dans un navigateur (connexion internet nécessaire pour charger p5.js et dat.GUI), ou bien lancer `python3 -m http.server` dans ce dossier et ouvrir http://localhost:8000.
-- Cliquer sur **Démarrer la simulation**.
+- La simulation démarre toute seule au chargement (et à chaque actualisation) ; le bouton **Arrêter la simulation** la met en pause.
 - On peut aussi copier `index.html`, `style.css`, `volumetric3D.js` et `poses_cube_animatio.js` dans un sketch de [l'éditeur p5](https://editor.p5js.org).
 
 ## Fichiers
