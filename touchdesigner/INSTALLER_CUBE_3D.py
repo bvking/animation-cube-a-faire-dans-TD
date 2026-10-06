@@ -211,35 +211,18 @@ def onCook(scriptOp):
     #  age = (rotation - phi) replie sur 180 degres : l'angle parcouru depuis le
     #  dernier passage d'un demi-bras. Le repli sur 180 et non 360 est ce qui
     #  fait que les DEUX demi-bras d'une lame comptent.
-    #  LE TEMPS NE RENTRE ICI QUE SI ON LE DEMANDE. Lire absTime rend le Script
-    #  CHOP DEPENDANT DU TEMPS : TouchDesigner le recuit alors a CHAQUE image,
-    #  sur le fil principal, pour quinze millisecondes de numpy -- plus trente
-    #  mille instances a dessiner. Le fil sature et l'editeur ne repond plus ;
-    #  c'est arrive, et il a fallu redemarrer TouchDesigner.
-    #  Decoche (le defaut) : la phase est un simple parametre, le CHOP ne cuit
-    #  que lorsque la POSE change. Un cube fixe ne coute alors plus rien.
-    #  Coche : la remanence tourne pour de bon, au prix d'une cuisson par image.
-    tours = float(comp.par.Toursparseconde)
-    if comp.par.Remanenceanimee:
-        rot = (absTime.seconds * tours * 360.0) % 360.0
-    else:
-        rot = float(comp.par.Phaseremanence) % 360.0
-    pa = max(1e-6, 360.0 * tours * float(comp.par.Persistance))
-    b = numpy.clip(1.0 - numpy.mod(rot - PHI, 180.0) / pa, 0.0, 1.0)
-    #  13 paliers : round(c b / 17) * 17 sur 0..255. Un degrade lisse se verrait
-    #  tout de suite comme different de l'original.
-    rouge = (numpy.round(255.0 * b / 17.0) * (17.0 / 255.0)).astype(numpy.float32)
-
-    #  QUATRE CANAUX, PAS SIX. Le vert et le bleu valaient zero pour les trente
-    #  mille LED, a chaque image : deux tableaux ecrits pour rien. Le ROUGE est
-    #  declare une fois pour toutes dans le materiau (1, 0, 0) et la luminosite
-    #  multiplie les trois composantes -- rouge x (b, b, b) = (b, 0, 0).
-    #  On fixe numSamples AVANT d'ajouter les canaux : sinon chaque canal est
-    #  cree a un echantillon puis redimensionne.
+    #  LA LUMINOSITE N'EST PLUS CALCULEE ICI. Elle depend du TEMPS, donc la
+    #  calculer sur le processeur central obligeait ce Script CHOP a recuire a
+    #  chaque image : quinze millisecondes de numpy sur trente mille LED, sur
+    #  le fil principal. TouchDesigner a fini par ne plus repondre du tout.
+    #  On ne sort donc que ce qui ne bouge pas avec le temps -- la position et
+    #  l'angle PHI auquel la LED a ete balayee -- et c'est le nuanceur qui fait
+    #  le reste, gratuitement, a chaque pixel.
+    #  Consequence directe : les LED peuvent enfin s'allumer et s'eteindre.
     e = numpy.float32(1.0 / float(comp.par.Cmparunite))
     scriptOp.numSamples = n
-    for nom, val in (('tx', X * e), ('ty', Y * e), ('tz', Z * e), ('r', rouge)):
-        scriptOp.appendChan(nom).vals = val.astype(numpy.float32)
+    for nom, val in (('tx', X * e), ('ty', Y * e), ('tz', Z * e), ('phi', PHI)):
+        scriptOp.appendChan(nom).vals = numpy.asarray(val, dtype=numpy.float32)
     scriptOp.rate = me.time.rate
     return
 '''
@@ -325,12 +308,16 @@ REGLAGES = (
      "Multiplie le gris des contours. 1 = les valeurs du simulateur, 120 pour "
      "la lame 0 et 60 pour les neuf autres. Monter si les contours se perdent "
      "a cote du rouge des LED."),
-    ('Remanenceanimee', 'toggle', 'Faire tourner la remanence', 0, 0, 1,
-     "Decoche, le Script CHOP ne cuit que quand la pose change : un cube fixe "
-     "ne coute plus rien par image. Coche, il lit l'horloge et se recalcule a "
-     "CHAQUE image -- quinze millisecondes de numpy sur le fil principal, plus "
-     "trente mille instances a dessiner. A n'allumer que pour voir tourner le "
-     "secteur clair, et pas en meme temps que le reste du spectacle."),
+    ('Paliers', 'float', 'Paliers de luminosite', 15.0, 1.0, 64.0,
+     "Nombre de marches dans le degrade de la trainee. 15 reproduit les 16 "
+     "niveaux par composante du simulateur (multiples de 17 sur 0..255). "
+     "Mettre 1 pour un degrade lisse."),
+    ('Remanenceanimee', 'toggle', 'Faire tourner la remanence', 1, 0, 1,
+     "Coche (le defaut) : les LED s'allument au passage de la lame et "
+     "s'eteignent ensuite -- c'est le balayage qui PEINT le cube, et sans lui "
+     "on ne voit qu'un cube fige entoure de cadres qui tournent. Le calcul se "
+     "fait au pixel, il ne coute rien. Decoche fige la trainee a la phase "
+     "ci-dessous, ce qui sert a examiner une position precise."),
     ('Phaseremanence', 'float', 'Phase de la remanence (deg)', 0.0, 0.0, 360.0,
      "La position du secteur clair quand la remanence ne tourne pas. Sans "
      "effet si « Faire tourner la remanence » est coche."),
@@ -385,6 +372,76 @@ mat = enfant(cv, 'constant1', constantMAT, -150, -340)
 #  par la couleur d'instance, qui MULTIPLIE celle-ci.
 mat.par.colorr, mat.par.colorg, mat.par.colorb = 1.0, 0.0, 0.0
 
+
+#  LA REMANENCE, SUR LE PROCESSEUR GRAPHIQUE
+#  Chaque LED porte l'angle PHI auquel la lame est passee dessus. Le nuanceur
+#  compare cet angle a la rotation courante et en deduit la luminosite :
+#      age = (rotation - phi) replie sur 180 degres
+#      b   = 1 - age / angle_de_persistance
+#  C'est exactement volumetric3D.js:556-564. Le repli sur 180 et non 360 est ce
+#  qui fait que les DEUX demi-bras d'une lame comptent.
+#  CE CALCUL EST GRATUIT ICI. Fait en Python il obligeait a reecrire trente
+#  mille valeurs par image sur le fil principal ; fait au pixel, il ne coute
+#  rien et les LED s'allument et s'eteignent pour de bon.
+#  Si b tombe sous 0,03 la LED est jetee (discard), comme dans le simulateur :
+#  c'est ce qui la fait vraiment S'ETEINDRE au lieu de palir indefiniment.
+CODE_SOMMET = '''// Chaque instance porte son angle de balayage.
+out Vertex {
+	flat float phi;
+} oVert;
+
+void main() {
+	vec4 worldSpacePos = TDDeform(P);
+	gl_Position = TDWorldToProj(worldSpacePos);
+	oVert.phi = TDInstanceCustomAttrib0().x;
+}
+'''
+
+CODE_PIXEL = '''// La remanence de volumetric3D.js:556-577, au pixel.
+uniform vec4 uRegle;     // x : rotation courante (deg) ; y : angle de persistance (deg)
+                         // z : nombre de paliers ; w : seuil d'extinction
+uniform vec4 uCouleur;
+
+in Vertex {
+	flat float phi;
+} iVert;
+
+out vec4 fragColor;
+
+void main() {
+	float age = mod(uRegle.x - iVert.phi, 180.0);
+	float b = 1.0 - age / max(1e-6, uRegle.y);
+	if (b <= uRegle.w) discard;          // la LED est ETEINTE, pas juste sombre
+	b = clamp(b, 0.0, 1.0);
+	// paliers, comme les multiples de 17 sur 0..255 du simulateur
+	if (uRegle.z > 1.0) b = floor(b * uRegle.z + 0.5) / uRegle.z;
+	fragColor = TDOutputSwizzle(vec4(uCouleur.rgb * b, 1.0));
+}
+'''
+
+dat_s = enfant(cv, 'remanence_sommet', textDAT, -400, -560)
+dat_s.text = CODE_SOMMET
+dat_p = enfant(cv, 'remanence_pixel', textDAT, -400, -640)
+dat_p.text = CODE_PIXEL
+mat_led = enfant(cv, 'remanence', glslMAT, -150, -600)
+mat_led.par.vdat = dat_s     # un glslMAT dit vdat et pdat, pas vertexdat
+mat_led.par.pdat = dat_p
+mat_led.par.vec0name = 'uRegle'
+#  LA ROTATION EST UNE EXPRESSION SUR UN SEUL FLOTTANT. C'est tout l'ecart avec
+#  l'ancienne version : un nombre reevalue par image au lieu de trente mille.
+mat_led.par.vec0valuex.expr = ("(absTime.seconds * parent().par.Toursparseconde "
+                               "* 360.0) % 360.0 if parent().par.Remanenceanimee "
+                               "else parent().par.Phaseremanence")
+mat_led.par.vec0valuey.expr = "360.0 * parent().par.Toursparseconde * parent().par.Persistance"
+mat_led.par.vec0valuez.expr = "parent().par.Paliers"
+mat_led.par.vec0valuew = 0.03
+mat_led.par.vec1name = 'uCouleur'
+mat_led.par.vec1valuex, mat_led.par.vec1valuey, mat_led.par.vec1valuez = 1.0, 0.0, 0.0
+mat_led.par.vec1valuew = 1.0
+mat_led.comment = ("La remanence au pixel : chaque LED s'allume au passage de "
+                   "la lame et s'eteint ensuite. Fait ici, le calcul est "
+                   "gratuit ; fait en Python, il figeait l'editeur.")
+
 #  LE PIEGE QUI M'A COUTE UNE HEURE. Un geometryCOMP tout neuf n'est PAS
 #  vide : TouchDesigner 2025 y depose un torusPOP nomme torus1, rendu par
 #  defaut, d'un rayon de 1 unite. On voit donc un gros tore rouge a la place
@@ -400,11 +457,12 @@ for _d in geo.children:
 geo.par.instancing = True
 geo.par.instanceop = vox
 geo.par.instancetx, geo.par.instancety, geo.par.instancetz = 'tx', 'ty', 'tz'
-geo.par.instancecolorop = vox
-#  le meme canal sur les trois composantes : il ne porte qu'une luminosite
-geo.par.instancer, geo.par.instanceg, geo.par.instanceb = 'r', 'r', 'r'
-geo.par.instancecolormode = 'multiply'
-geo.par.material = mat
+#  PHI VOYAGE COMME ATTRIBUT PERSONNALISE D'INSTANCE : le nuanceur le lit par
+#  TDInstanceCustomAttrib0(). La couleur d'instance ne sert plus a rien, c'est
+#  le nuanceur qui la fabrique.
+geo.par.instance0customop = vox
+geo.par.instance0customx = 'phi'
+geo.par.material = mat_led
 for n in ('tx', 'ty', 'tz'):
     getattr(geo.par, n).val = 0.0
 
