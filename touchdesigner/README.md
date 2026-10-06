@@ -92,6 +92,8 @@ sont alors simplement pas visibles). Le Text DAT peut être supprimé après.
   bouton se place sous « CUBE EN MARCHE »)
 - `INSTALLER_VASARELY.py` — installe l'effet Vasarely (après les deux autres ;
   son bouton se place sous « LANCER L'ANNEAU »)
+- `INSTALLER_REAL_MOVE.py` — installe la fenêtre **real_Move** (le contrôle du
+  mouvement réel) ; indépendante des trois animations, ré-exécutable
 - `DESINSTALLER_ANIMATION_CUBE.py` / `DESINSTALLER_ANNEAU_CONE.py` /
   `DESINSTALLER_VASARELY.py` — retirent tout et restaurent les expressions
   d'origine (désinstaller dans l'ordre inverse d'installation : Vasarely,
@@ -159,6 +161,39 @@ bouton coupe les deux autres. Réglages sur `/project1/scale/VASARELY`, page
 Vasarely : Relief (−90…90°, défaut 80), Rayon (0,84), Densité (20), Ombrage
 (0,4), Motif, Disposition, Centre X/Y, Palette (vega / braise / nuit),
 Animer, Demi-tours par cycle, Période, Luminosité.
+
+## La fenêtre real_Move (contrôle du mouvement réel)
+
+`INSTALLER_REAL_MOVE.py` construit la fenêtre **real_Move** : en haut les dix
+panneaux aux positions **réelles** rapportées par la Teensy, en bas le tableau
+des chiffres qui les commandent — angle, vitesse, accélération commandée et
+accélération subie, couple, couple maximum, et l'écart moyen entre lames
+voisines. Plus un interrupteur **MOTIFS SUR LES ANGLES RÉELS** lié à
+`MOTIFS_LED.Anglesreels`, et un curseur de volume à droite.
+
+Pourquoi des chiffres sous l'image : une image dit si le mouvement est beau,
+elle ne dit pas s'il est **juste**. Le compteur de la Teensy compte les pas
+qu'elle *émet*, pas ceux que l'axe *fait* — un décrochage n'apparaît nulle
+part. Le tableau ne recalcule rien : il lit les canaux déjà publiés par
+`MOTEURS_TEENSY` (`vitesses_lames`, `couples_lames`, `couples_pic`,
+`accels_lames`), parce que dériver un angle **replié modulo 360** aliasait
+jusqu'à inverser le signe de la vitesse.
+
+Le rapport d'installation affiche la **place restante** dans la boîte des
+chiffres :
+
+```
+  place          pire cas 142 car. x 15 lignes = 1147 x 265 px
+                 boite 1184 x 280 px -- marge 37 en largeur, 15 en hauteur
+```
+
+Cette marge compte. Le texte est centré, donc une ligne ou une colonne ajoutée
+en trop se fait rogner **en silence** — aucune erreur, aucun opérateur rouge,
+juste une colonne qui manque. C'est arrivé deux fois : les deux lignes
+d'accélération et la colonne « écart moyen » ont débordé une boîte restée à sa
+taille d'origine. Si une marge passe sous zéro, remonter `bas.par.h` et
+`txt.par.resolutionh`, ou baisser `txt.par.fontsizex` (1280 px reste le plafond
+d'une clé non commerciale).
 
 ## Si le Textport se remplit d'erreurs `text1` / `shuffle1`
 
