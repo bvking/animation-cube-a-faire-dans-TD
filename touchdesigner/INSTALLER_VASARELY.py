@@ -251,16 +251,19 @@ def onOffToOn(panelValue):
 \treturn
 """
 
-CB_BOUTON_CUBE_3 = """# Le clic bascule ANIMATION_CUBE.Actif ; en s'allumant il coupe l'anneau
-# et le vasarely (un seul maitre a la fois sur la chaine LED).
+CB_BOUTON_CUBE_3 = """# LANCER LE CUBE : l'animation. En s'allumant il coupe le cube statique (meme
+# module), l'anneau et Vasarely (un seul maitre a la fois sur la chaine LED).
 def onOffToOn(panelValue):
-\tp = op('/project1/scale/ANIMATION_CUBE').par.Actif
-\tp.val = 0 if p else 1
-\tif p:
-\t\tfor autre in ('/project1/scale/ANNEAU_CONE', '/project1/scale/VASARELY'):
-\t\t\to = op(autre)
-\t\t\tif o is not None:
-\t\t\t\to.par.Actif = 0
+\tm = op('/project1/scale/ANIMATION_CUBE')
+\tif m.par.Actif and not m.par.Cubestatique:
+\t\tm.par.Actif = 0
+\t\treturn
+\tm.par.Cubestatique = 0
+\tm.par.Actif = 1
+\tfor autre in ('/project1/scale/ANNEAU_CONE', '/project1/scale/VASARELY'):
+\t\to = op(autre)
+\t\tif o is not None:
+\t\t\to.par.Actif = 0
 \treturn
 """
 

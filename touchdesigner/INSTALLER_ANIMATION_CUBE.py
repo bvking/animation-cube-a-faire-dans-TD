@@ -38,6 +38,18 @@ NOM_MODULE = 'ANIMATION_CUBE'
 NOM_SECTION = 'cube_anime'
 NOM_COMMENT = 'COMMENT_57_ANIMATION_CUBE'
 
+# ----------------------------------------------------------------------------
+# LE CUBE STATIQUE : la pose du cube de analyse/capture_cube_statique.png,
+# retrouvee par analyse/pose_capture.py -- le MEME algorithme (focale 165 px,
+# image de travail 160 px, meme cout) que celui qui a produit les 300 poses de
+# l'animation. Ecart cube ajuste / traits de la capture : 2,39 px. Quaternion
+# dans le repere de la camera (x a droite, y vers le bas, z vers le fond),
+# comme chaque ligne de la table 'poses'. Le centre et la taille de la capture
+# ne servent pas : le cube statique est CENTRE dans le volume et agrandi au
+# plus grand demi-cote qui tient (_taille_max dans CB_POSE ; la meme regle est
+# dans verification/reference.py, testee par test_cube_statique.py).
+POSE_STATIQUE = (0.0303, -0.5728, 0.6839, 0.4509)
+
 # Expression d'origine du switch, telle que lue dans le projet livre -- sert
 # de secours si la sauvegarde manque au moment de desinstaller.
 EXPR_INDEX_ORIGINE = ("2 if op('MOTIFS_LED').par.Motif.eval() != 'off' "
@@ -447,6 +459,40 @@ def _echelle(w, ecart):
 \tcomp.store('echelle_valeur', L)
 \treturn L
 
+def _rotation(x, y, z, w_):
+\t# Quaternion -> matrice (lignes r0..r8), puis retournement de l'axe z : la
+\t# camera des images regardait vers le fond, le volume a z vers le
+\t# spectateur (les termes qui croisent z changent de signe), comme dans
+\t# volumetric3D.js.
+\tR = [1 - 2 * (y * y + z * z), 2 * (x * y - z * w_), 2 * (x * z + y * w_),
+\t     2 * (x * y + z * w_), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w_),
+\t     2 * (x * z - y * w_), 2 * (y * z + x * w_), 1 - 2 * (x * x + y * y)]
+\tR[2] = -R[2]; R[5] = -R[5]; R[6] = -R[6]; R[7] = -R[7]
+\treturn R
+
+def _taille_max(R, w, ecart):
+\t# Le plus grand demi-cote h tel que les 8 sommets restent entre les
+\t# panneaux 0 et 9 (|z| <= 4.5 ecarts) et que les aretes, epaisseur
+\t# comprise, restent dans le rayon des lames (79.5 cm moins w). Chaque
+\t# contrainte est lineaire en h : on garde la plus serree des seize.
+\t# Cube non tourne : 45 cm, faces avant et arriere sur les panneaux 0 et
+\t# 9, comme Cubefixe. Meme calcul dans verification/reference.py.
+\tzmax = 4.5 * ecart
+\trayon = 79.5 - w
+\th = 1e30
+\tfor sx in (-1.0, 1.0):
+\t\tfor sy in (-1.0, 1.0):
+\t\t\tfor sz in (-1.0, 1.0):
+\t\t\t\tpx = R[0] * sx + R[1] * sy + R[2] * sz
+\t\t\t\tpy = R[3] * sx + R[4] * sy + R[5] * sz
+\t\t\t\tpz = R[6] * sx + R[7] * sy + R[8] * sz
+\t\t\t\tif abs(pz) > 1e-12:
+\t\t\t\t\th = min(h, zmax / abs(pz))
+\t\t\t\tr = math.hypot(px, py)
+\t\t\t\tif r > 1e-12:
+\t\t\t\t\th = min(h, rayon / r)
+\treturn h
+
 def onCook(scriptOp):
 \tscriptOp.clear()
 \tcomp = parent()
@@ -464,6 +510,7 @@ def onCook(scriptOp):
 \t\tavance = float(op('compteur')['v'])
 \timage = (int(comp.par.Imageno) + int(avance)) % n
 \tcx, cy, s, qx, qy, qz, qw, interp = (float(t[image, c]) for c in range(8))
+\tstatique = 0.0
 \tif comp.par.Cubefixe:
 \t\t# Cube fixe : centre, non tourne ; ses faces avant et arriere tombent
 \t\t# sur le premier et le dernier panneau.
@@ -471,20 +518,33 @@ def onCook(scriptOp):
 \t\tcentre = (0.0, 0.0, 0.0)
 \t\tR = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
 \t\tinterp = 0.0
+\telif comp.par.Cubestatique:
+\t\t# CUBE STATIQUE : une seule pose, centree, agrandie au plus grand
+\t\t# demi-cote qui tient entre les panneaux 0 et 9 et dans le rayon des
+\t\t# lames. Imagestatique = -1 : la rotation de la capture (table
+\t\t# pose_statique) ; 0..299 : la rotation de cette image de l'animation,
+\t\t# figee. Le GLSL fait le reste, lame par lame, comme pour l'animation.
+\t\tstatique = 1.0
+\t\tk = int(comp.par.Imagestatique)
+\t\tif 0 <= k < n:
+\t\t\timage = k
+\t\t\tqx, qy, qz, qw = (float(t[k, c]) for c in range(3, 7))
+\t\telse:
+\t\t\timage = -1
+\t\t\tts = op('pose_statique')
+\t\t\tqx, qy, qz, qw = (float(ts[0, c]) for c in range(4))
+\t\tR = _rotation(qx, qy, qz, qw)
+\t\th = _taille_max(R, w, ecart) * min(1.0, max(0.05, float(comp.par.Taillestatique)))
+\t\tcentre = (0.0, 0.0, 0.0)
+\t\tinterp = 0.0
 \telse:
 \t\th = L * s
 \t\tcentre = (L * cx, L * cy, 0.0)
-\t\tx, y, z, w_ = qx, qy, qz, qw
-\t\tR = [1 - 2 * (y * y + z * z), 2 * (x * y - z * w_), 2 * (x * z + y * w_),
-\t\t     2 * (x * y + z * w_), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w_),
-\t\t     2 * (x * z - y * w_), 2 * (y * z + x * w_), 1 - 2 * (x * x + y * y)]
-\t\t# La camera des images regardait vers le fond, le volume a z vers le
-\t\t# spectateur : on retourne l'axe z (les termes qui croisent z changent
-\t\t# de signe), comme dans volumetric3D.js.
-\t\tR[2] = -R[2]; R[5] = -R[5]; R[6] = -R[6]; R[7] = -R[7]
+\t\tR = _rotation(qx, qy, qz, qw)
 \tvaleurs = [('cx', centre[0]), ('cy', centre[1]), ('cz', centre[2]), ('h', h)]
 \tvaleurs += [('r%d' % i, R[i]) for i in range(9)]
-\tvaleurs += [('interp', float(interp)), ('image', float(image)), ('l', L)]
+\tvaleurs += [('interp', float(interp)), ('image', float(image)), ('l', L),
+\t            ('statique', statique)]
 \tfor nom, v in valeurs:
 \t\tscriptOp.appendChan(nom)[0] = v
 \treturn
@@ -540,10 +600,35 @@ def onCook(scriptOp):
 \treturn
 """
 
-CB_BOUTON = """# Le clic sur le bouton bascule ANIMATION_CUBE.Actif.
+CB_BOUTON = """# LANCER LE CUBE : l'animation. En s'allumant il coupe le cube statique (meme
+# module), l'anneau et Vasarely (un seul maitre a la fois sur la chaine LED).
 def onOffToOn(panelValue):
-\tp = op('/project1/scale/ANIMATION_CUBE').par.Actif
-\tp.val = 0 if p else 1
+\tm = op('/project1/scale/ANIMATION_CUBE')
+\tif m.par.Actif and not m.par.Cubestatique:
+\t\tm.par.Actif = 0
+\t\treturn
+\tm.par.Cubestatique = 0
+\tm.par.Actif = 1
+\tfor autre in ('/project1/scale/ANNEAU_CONE', '/project1/scale/VASARELY'):
+\t\to = op(autre)
+\t\tif o is not None:
+\t\t\to.par.Actif = 0
+\treturn
+"""
+
+CB_BOUTON_STATIQUE = """# CUBE STATIQUE : une seule pose, centree, agrandie. En s'allumant il coupe
+# l'animation (meme module), l'anneau et Vasarely (un seul maitre a la fois).
+def onOffToOn(panelValue):
+\tm = op('/project1/scale/ANIMATION_CUBE')
+\tif m.par.Actif and m.par.Cubestatique:
+\t\tm.par.Actif = 0
+\t\treturn
+\tm.par.Cubestatique = 1
+\tm.par.Actif = 1
+\tfor autre in ('/project1/scale/ANNEAU_CONE', '/project1/scale/VASARELY'):
+\t\to = op(autre)
+\t\tif o is not None:
+\t\t\to.par.Actif = 0
 \treturn
 """
 
@@ -559,6 +644,7 @@ CE QUE C'EST
 
 LE RESEAU
   poses       Table DAT, 300 lignes : cx, cy, s, qx..qw, interpolee
+  pose_statique  Table DAT, 1 ligne : qx..qw du cube statique (la capture)
   vitesse     Images/s x Lecture -> compteur (Speed) : pas de saut
   angle_lame0 / rotation_compteur
               l'angle de la lame 0 (meme source que les motifs), deroule
@@ -621,6 +707,12 @@ REGLAGES (page Cube)
   Imageno        choix de l'image a l'arret (0..299)
   Remettre       revient a l'image 0
   Cubefixe       un cube immobile centre, pour verifier la geometrie
+  Cubestatique   LE CUBE STATIQUE : une seule pose, centree, agrandie au
+                 plus grand demi-cote qui tient (le bouton CUBE STATIQUE
+                 de SORTIE_SPECTACLE fait pareil et coupe l'animation)
+  Imagestatique  sa pose : -1 = la capture analyse/capture_cube_statique.png
+                 (table pose_statique), 0..299 = une image de l'animation
+  Taillestatique 1 = le plus grand cube qui tient, 0.5 = moitie...
   Epaisseur      demi-epaisseur des aretes, en cm (4 par defaut)
   Ecartcm        ecart reel entre deux panneaux (10 cm par defaut)
   Couleur        rouge par defaut
@@ -656,10 +748,15 @@ COMMENT C'EST BRANCHE
   Panneaux reels, simulateur et rendu 3D suivent tous panel_mask_output,
   donc les trois montrent le cube sans autre branchement.
 
-LE BOUTON
+LES BOUTONS
   SORTIE_SPECTACLE / PANNEAU_COMMANDES / cube_anime : LANCER LE CUBE /
-  CUBE EN MARCHE, plus la ligne d'etat (image courante, interpolee ou
-  non). Style et couleurs pris sur parent.commandes, comme le catalogue.
+  CUBE EN MARCHE (l'animation), et juste dessous LANCER LE CUBE STATIQUE /
+  CUBE STATIQUE EN MARCHE (une seule pose : la rotation retrouvee dans
+  analyse/capture_cube_statique.png, centree, agrandie au maximum qui
+  tient). Les deux pilotent le MEME module : l'un coupe l'autre, et
+  chacun coupe l'anneau et Vasarely. Plus la ligne d'etat (image courante,
+  interpolee ou non ; ou 'cube statique', pose et cote). Style et couleurs
+  pris sur parent.commandes, comme le catalogue.
 
 LA GEOMETRIE, EN CLAIR
   Texel (lame s, colonne k, rangee j), lame a l'angle th (degres) :
@@ -721,6 +818,7 @@ def installer():
 
     # ---- Reinstallation : retrouver l'expression d'origine avant de raser ----
     expr_index = sw.par.index.expr or ''
+    expr_avant = expr_index      # l'expression complete, anneau et Vasarely compris
     expr_vue = (vue_led.par.top.expr or '') if vue_led else ''
     ancien = scale.op(NOM_MODULE)
     if ancien:
@@ -748,8 +846,9 @@ def installer():
     if vue_led and 'panel_mask_output' in (vue_led.par.top.expr or ''):
         vue_led.par.top.expr = expr_vue
     _detruire(CHEMIN_SCALE + '/' + NOM_MODULE)
-    _detruire(commandes.path + '/' + NOM_SECTION)
     _detruire(CHEMIN_SCALE + '/' + NOM_COMMENT)
+    # La section du bouton n'est PAS rasee : l'anneau et Vasarely y ont mis
+    # leurs boutons. On ne refait que les notres (plus bas).
 
     # ------------------------------------------------------------------ module
     comp = scale.create(baseCOMP, NOM_MODULE)
@@ -779,6 +878,14 @@ def installer():
     page.appendPulse('Remettre', label="Revenir a l'image 0")
     p = page.appendToggle('Cubefixe', label='Cube fixe (verification)')[0]
     p.val = False
+    p = page.appendToggle('Cubestatique', label='Cube statique (une pose, centre, agrandi)')[0]
+    p.val = False
+    p = page.appendInt('Imagestatique', label='Pose du cube statique (-1 = la capture, 0..299 = une image)')[0]
+    p.default = -1; p.val = -1; p.normMin = -1; p.normMax = 299
+    p.clampMin = True; p.min = -1; p.clampMax = True; p.max = 299
+    p = page.appendFloat('Taillestatique', label='Taille du cube statique (1 = le plus grand qui tient)')[0]
+    p.default = 1; p.val = 1; p.normMin = 0.2; p.normMax = 1
+    p.clampMin = True; p.clampMax = True; p.min = 0.05; p.max = 1
     p = page.appendFloat('Epaisseur', label='Demi-epaisseur aretes (cm)')[0]
     p.default = 4; p.val = 4; p.normMin = 1; p.normMax = 10; p.clampMin = True; p.min = 1
     p = page.appendFloat('Ecartcm', label='Ecart entre panneaux (cm)')[0]
@@ -800,6 +907,13 @@ def installer():
     for ligne in POSES_TEXTE.strip().splitlines():
         poses.appendRow(ligne.split())
     assert poses.numRows == 300, 'La table des poses devrait faire 300 lignes.'
+    pose_statique = comp.create(tableDAT, 'pose_statique')
+    pose_statique.nodeX, pose_statique.nodeY = -700, -320
+    pose_statique.clear()
+    pose_statique.appendRow(['%.4f' % v for v in POSE_STATIQUE])
+    pose_statique.comment = ("La rotation du cube statique (qx qy qz qw, repere de la "
+                             "camera), retrouvee dans analyse/capture_cube_statique.png "
+                             "par analyse/pose_capture.py.")
 
     # ---- horloge : pas de saut quand on change la vitesse ou qu'on met en pause
     vitesse = comp.create(constantCHOP, 'vitesse')
@@ -950,7 +1064,7 @@ def installer():
     if not entrees_module():
         comp.outputConnectors[0].connect(sw)
     rang = entrees_module()
-    if rang != [3]:
+    if len(rang) != 1:
         # On retire le branchement avant de s'arreter : l'expression d'origine
         # est en place, la chaine LED reste intacte.
         try:
@@ -958,36 +1072,60 @@ def installer():
         except Exception:
             pass
         raise AssertionError(
-            'out_led devait etre la 4e entree du switch, trouve : %s -- '
+            'out_led devait etre branche une fois sur le switch, trouve : %s -- '
             'branchement retire, chaine LED inchangee.' % rang)
-    sw.par.index.expr = ("3 if op('ANIMATION_CUBE').par.Actif else (%s)" % expr_index)
+    # A la premiere installation le cube est l'entree 3. A une REINSTALLATION
+    # avec l'anneau et Vasarely deja branches, detruire le module a pu
+    # decaler leurs entrees : on rebatit donc l'expression sur les entrees
+    # REELLES, dans l'ordre de priorite d'origine (Vasarely > anneau > cube).
+    def entree_de(nom):
+        for i, e in enumerate(sw.inputs):
+            if e and ('/' + nom) in e.path:
+                return i
+        return None
+    expr = "%d if op('ANIMATION_CUBE').par.Actif else (%s)" % (rang[0], expr_index)
+    for autre in ('ANNEAU_CONE', 'VASARELY'):
+        i = entree_de(autre)
+        if i is not None and ("op('%s').par.Actif" % autre) in expr_avant:
+            expr = "%d if op('%s').par.Actif else (%s)" % (i, autre, expr)
+    sw.par.index.expr = expr
 
     # La vue 'led' du spectacle montre desormais ce qui PART VRAIMENT,
     # quel que soit le maitre (motifs, variations ou cube).
     if vue_led:
         vue_led.par.top.expr = "parent.sortie.parent().op('panel_mask_output')"
 
-    # ------------------------------------------------- la section avec bouton
-    section = commandes.create(containerCOMP, NOM_SECTION)
-    section.nodeX, section.nodeY = 400, 0
-    section.par.w = 230
-    section.par.hmode = 'fixed'
-    section.par.vmode = 'fill'
-    section.par.alignorder = 50
-    section.par.align = 'verttb'
-    section.par.spacing = 4
-    for m in ('marginl', 'marginr', 'margint', 'marginb'):
-        setattr(section.par, m, 6)
-    for c, e in (('bgcolorr', 'Fondsectionr'), ('bgcolorg', 'Fondsectiong'),
-                 ('bgcolorb', 'Fondsectionb')):
-        getattr(section.par, c).expr = 'parent.commandes.par.' + e
-    section.par.bgalpha = 1
-    for c, e in (('borderar', 'Accentr'), ('borderag', 'Accentg'),
-                 ('borderab', 'Accentb')):
-        getattr(section.par, c).expr = 'parent.commandes.par.' + e
-    section.par.borderaalpha = 0.35
-    for b in ('leftborder', 'rightborder', 'topborder', 'bottomborder'):
-        setattr(section.par, b, 'bordera')
+    # ------------------------------------------------- la section avec boutons
+    # Elle peut deja exister (reinstallation) : on y garde les boutons de
+    # l'anneau et de Vasarely et on ne refait que les notres.
+    section = commandes.op(NOM_SECTION)
+    autres_boutons = 0
+    if section is None:
+        section = commandes.create(containerCOMP, NOM_SECTION)
+        section.nodeX, section.nodeY = 400, 0
+        section.par.w = 230
+        section.par.hmode = 'fixed'
+        section.par.vmode = 'fill'
+        section.par.alignorder = 50
+        section.par.align = 'verttb'
+        section.par.spacing = 4
+        for m in ('marginl', 'marginr', 'margint', 'marginb'):
+            setattr(section.par, m, 6)
+        for c, e in (('bgcolorr', 'Fondsectionr'), ('bgcolorg', 'Fondsectiong'),
+                     ('bgcolorb', 'Fondsectionb')):
+            getattr(section.par, c).expr = 'parent.commandes.par.' + e
+        section.par.bgalpha = 1
+        for c, e in (('borderar', 'Accentr'), ('borderag', 'Accentg'),
+                     ('borderab', 'Accentb')):
+            getattr(section.par, c).expr = 'parent.commandes.par.' + e
+        section.par.borderaalpha = 0.35
+        for b in ('leftborder', 'rightborder', 'topborder', 'bottomborder'):
+            setattr(section.par, b, 'bordera')
+    else:
+        for nom in ('titre', 'bouton', 'bouton_statique', 'etat'):
+            _detruire(section.path + '/' + nom)
+        autres_boutons = sum(1 for nom in ('bouton_anneau', 'bouton_vasarely')
+                             if section.op(nom) is not None)
 
     titre = section.create(textCOMP, 'titre')
     titre.par.text = 'ANIMATION CUBE'
@@ -1005,50 +1143,65 @@ def installer():
     titre.par.bgalpha = 0
     titre.par.alignorder = 0
 
-    bouton = section.create(containerCOMP, 'bouton')
-    bouton.par.h.expr = 'parent.commandes.par.Hauteurbouton * 1.8'
-    bouton.par.hmode = 'fill'
-    bouton.par.alignorder = 1
-    chemin_actif = "op('/project1/scale/ANIMATION_CUBE').par.Actif"
-    for c, a, f in (('bgcolorr', 'Accentr', 'Fondboutonr'),
-                    ('bgcolorg', 'Accentg', 'Fondboutong'),
-                    ('bgcolorb', 'Accentb', 'Fondboutonb')):
-        getattr(bouton.par, c).expr = ('parent.commandes.par.%s if %s else '
-                                       'parent.commandes.par.%s' % (a, chemin_actif, f))
-    bouton.par.bgalpha.expr = '0.98 if me.panel.inside else 0.82'
-    for c, e in (('borderar', 'Accentr'), ('borderag', 'Accentg'),
-                 ('borderab', 'Accentb')):
-        getattr(bouton.par, c).expr = 'parent.commandes.par.' + e
-    bouton.par.borderaalpha.expr = '1.0 if %s else 0.16' % chemin_actif
-    for b in ('leftborder', 'rightborder', 'topborder', 'bottomborder'):
-        setattr(bouton.par, b, 'bordera')
+    def _bouton(nom, ordre, chemin_actif, texte_on, texte_off, callback):
+        # Un bouton de la section, au style maison : allume quand chemin_actif
+        # est vrai ; le panelexecuteDAT 'clic' fait la bascule.
+        bouton = section.create(containerCOMP, nom)
+        bouton.par.h.expr = 'parent.commandes.par.Hauteurbouton * 1.8'
+        bouton.par.hmode = 'fill'
+        bouton.par.alignorder = ordre
+        for c, a, f in (('bgcolorr', 'Accentr', 'Fondboutonr'),
+                        ('bgcolorg', 'Accentg', 'Fondboutong'),
+                        ('bgcolorb', 'Accentb', 'Fondboutonb')):
+            getattr(bouton.par, c).expr = ('parent.commandes.par.%s if %s else '
+                                           'parent.commandes.par.%s' % (a, chemin_actif, f))
+        bouton.par.bgalpha.expr = '0.98 if me.panel.inside else 0.82'
+        for c, e in (('borderar', 'Accentr'), ('borderag', 'Accentg'),
+                     ('borderab', 'Accentb')):
+            getattr(bouton.par, c).expr = 'parent.commandes.par.' + e
+        bouton.par.borderaalpha.expr = '1.0 if %s else 0.16' % chemin_actif
+        for b in ('leftborder', 'rightborder', 'topborder', 'bottomborder'):
+            setattr(bouton.par, b, 'bordera')
 
-    etiquette = bouton.create(textCOMP, 'etiquette')
-    etiquette.par.text.expr = ("'CUBE EN MARCHE' if %s else 'LANCER LE CUBE'"
-                               % chemin_actif)
-    etiquette.par.hmode = 'fill'
-    etiquette.par.vmode = 'fill'
-    etiquette.par.fontsize = 10
-    try:
-        etiquette.par.fontsizeunits = 'points'
-    except Exception:
-        pass
-    for c, e in (('fontcolorr', 'Texter'), ('fontcolorg', 'Texteg'),
-                 ('fontcolorb', 'Texteb')):
-        getattr(etiquette.par, c).expr = 'parent.commandes.par.' + e
-    etiquette.par.bgalpha = 0
-    etiquette.par.clickthrough = True
+        etiquette = bouton.create(textCOMP, 'etiquette')
+        etiquette.par.text.expr = "'%s' if %s else '%s'" % (texte_on, chemin_actif, texte_off)
+        etiquette.par.hmode = 'fill'
+        etiquette.par.vmode = 'fill'
+        etiquette.par.fontsize = 10
+        try:
+            etiquette.par.fontsizeunits = 'points'
+        except Exception:
+            pass
+        for c, e in (('fontcolorr', 'Texter'), ('fontcolorg', 'Texteg'),
+                     ('fontcolorb', 'Texteb')):
+            getattr(etiquette.par, c).expr = 'parent.commandes.par.' + e
+        etiquette.par.bgalpha = 0
+        etiquette.par.clickthrough = True
 
-    clic = bouton.create(panelexecuteDAT, 'clic')
-    clic.par.panelvalue = 'select'
-    clic.par.offtoon = True
-    clic.par.valuechange = False
-    _texte(clic, CB_BOUTON)
+        clic = bouton.create(panelexecuteDAT, 'clic')
+        clic.par.panelvalue = 'select'
+        clic.par.offtoon = True
+        clic.par.valuechange = False
+        _texte(clic, callback)
+        return bouton
+
+    MODULE = "op('/project1/scale/ANIMATION_CUBE')"
+    # LANCER LE CUBE : l'animation. Allume seulement si le cube statique ne
+    # l'est pas -- les deux boutons pilotent le meme module.
+    _bouton('bouton', 1, '(%s.par.Actif and not %s.par.Cubestatique)' % (MODULE, MODULE),
+            'CUBE EN MARCHE', 'LANCER LE CUBE', CB_BOUTON)
+    # CUBE STATIQUE, juste dessous : 1.5 le place entre le cube (1) et
+    # l'anneau (2) sans renumeroter les boutons des autres installeurs.
+    _bouton('bouton_statique', 1.5, '(%s.par.Actif and %s.par.Cubestatique)' % (MODULE, MODULE),
+            'CUBE STATIQUE EN MARCHE', 'LANCER LE CUBE STATIQUE', CB_BOUTON_STATIQUE)
 
     etat = section.create(textCOMP, 'etat')
+    POSE = "op('/project1/scale/ANIMATION_CUBE/pose')"
     etat.par.text.expr = (
-        "'image %d/300%s' % (int(op('/project1/scale/ANIMATION_CUBE/pose')['image']), "
-        "' (interpolee)' if op('/project1/scale/ANIMATION_CUBE/pose')['interp'] else '')")
+        "('cube statique : ' + ('la capture' if float(" + POSE + "['image']) < 0 else "
+        "'image %d' % int(" + POSE + "['image'])) + ', cote %d cm' % round(2 * float(" + POSE + "['h']))) "
+        "if float(" + POSE + "['statique']) else "
+        "('image %d/300%s' % (int(" + POSE + "['image']), ' (interpolee)' if " + POSE + "['interp'] else ''))")
     etat.par.h = 20
     etat.par.hmode = 'fill'
     etat.par.fontsize = 8.5
@@ -1062,7 +1215,9 @@ def installer():
     etat.par.alignx = 'left'
     etat.par.bgalpha = 0
     etat.par.clickthrough = True
-    etat.par.alignorder = 2
+    # Sous les boutons des autres installeurs s'ils sont la (ils renumerotent
+    # cette ligne a leur installation, de la meme facon).
+    etat.par.alignorder = 2 + autres_boutons
 
     # ------------------------------------------------- documentation maison
     comment = scale.create(textDAT, NOM_COMMENT)
@@ -1096,9 +1251,11 @@ def installer():
         print('  MESURE incomplete (%s) -- l installation elle-meme est terminee.' % e)
     err = comp.errors(recurse=True)
     print('  erreurs dans le module : %s' % (err if err else 'aucune'))
-    print('  switch : out_led en entree 3, expression posee ; Actif est DECOCHE,')
-    print("  rien ne change tant qu'on n'appuie pas sur le bouton.")
-    print('  Bouton : SORTIE_SPECTACLE > panneau de commandes > ANIMATION CUBE.')
+    print('  switch : out_led en entree %d, expression posee ; Actif est DECOCHE,' % rang[0])
+    print("  rien ne change tant qu'on n'appuie pas sur un bouton.")
+    print('  cube statique : pose de la capture, quaternion %s' % (POSE_STATIQUE,))
+    print('  Boutons : SORTIE_SPECTACLE > panneau de commandes > ANIMATION CUBE :')
+    print('  LANCER LE CUBE (l animation) et LANCER LE CUBE STATIQUE (une pose).')
     print('  Penser a : Fichier > Enregistrer sous (ne pas ecraser le .toe).')
     return comp
 

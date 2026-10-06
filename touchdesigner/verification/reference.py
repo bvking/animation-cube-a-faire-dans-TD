@@ -29,13 +29,45 @@ def echelle_animation(poses, w, N=160, S=10, pas=1.0, ecart=10.0):
     L = np.minimum((zmax - w) / reach, (demi_longueur - w) / (np.hypot(poses[:, 0], poses[:, 1]) + reach))
     return max(0.0, float(L.min()))
 
-def pose(poses, i, L):
-    cx, cy, s, x, y, z, w_, interp = poses[i]
+def rotation_volume(x, y, z, w_):
+    """Quaternion (repere de la camera) -> matrice de rotation dans le repere du volume :
+    meme formule que volumetric3D.js, puis retournement de l'axe z."""
     Rm = np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - z * w_), 2 * (x * z + y * w_)],
                    [2 * (x * y + z * w_), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w_)],
                    [2 * (x * z - y * w_), 2 * (y * z + x * w_), 1 - 2 * (x * x + y * y)]])
     Rm[0, 2] *= -1; Rm[1, 2] *= -1; Rm[2, 0] *= -1; Rm[2, 1] *= -1   # retournement de l'axe z
+    return Rm
+
+def pose(poses, i, L):
+    cx, cy, s, x, y, z, w_, interp = poses[i]
+    Rm = rotation_volume(x, y, z, w_)
     return np.array([L * cx, L * cy, 0.0]), L * s, Rm, bool(interp)
+
+SOMMETS_CUBE = np.array([[(1 if (i & 1) else -1), (1 if (i & 2) else -1), (1 if (i & 4) else -1)]
+                         for i in range(8)], dtype=float)
+
+def taille_max_statique(Rm, w, N=160, S=10, pas=1.0, ecart=10.0):
+    """Le plus grand demi-cote h tel que les 8 sommets du cube tourne par Rm restent entre les
+    panneaux 0 et 9 (|z| <= zmax) et que les aretes, epaisseur w comprise, restent dans le rayon
+    des lames (hypot(x, y) <= demi_longueur - w). Chaque contrainte est lineaire en h.
+    Cube non tourne : 45 cm, les faces avant et arriere sur les panneaux 0 et 9 (comme Cubefixe)."""
+    zmax = (S - 1) / 2 * ecart
+    rayon = (N - 1) / 2 * pas - w
+    p = SOMMETS_CUBE @ Rm.T
+    pz = np.abs(p[:, 2])
+    pr = np.hypot(p[:, 0], p[:, 1])
+    with np.errstate(divide='ignore'):
+        hz = np.where(pz > 1e-12, zmax / np.where(pz > 1e-12, pz, 1.0), np.inf)
+        hr = np.where(pr > 1e-12, rayon / np.where(pr > 1e-12, pr, 1.0), np.inf)
+    return float(min(hz.min(), hr.min()))
+
+def pose_statique(q, w, taille=1.0, N=160, S=10, pas=1.0, ecart=10.0):
+    """Le CUBE STATIQUE : une seule pose, centree, de rotation q (quaternion du repere camera,
+    comme une ligne de poses), agrandie a `taille` fois le plus grand demi-cote qui tient.
+    Portage de la branche Cubestatique de CB_POSE (INSTALLER_ANIMATION_CUBE.py)."""
+    Rm = rotation_volume(*q)
+    h = taille_max_statique(Rm, w, N, S, pas, ecart) * min(1.0, max(0.05, float(taille)))
+    return np.zeros(3), h, Rm
 
 def distance_aretes(q):
     """Distance d'un point (repère du cube, demi-côté 1) aux 12 arêtes. q : (..., 3)"""

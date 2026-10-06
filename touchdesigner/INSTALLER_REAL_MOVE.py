@@ -231,6 +231,11 @@ haut.par.alignorder = 0
 #  L'image du haut bascule entre l'instant et le volume balaye. L'expression
 #  est GARDEE : CUBE_3D peut ne pas etre installe, et une expression qui leve
 #  a chaque cuisson rendrait le panneau rouge au lieu de se taire.
+#  VOLUME BALAYE : CUBE_3D imprime l'image REELLEMENT envoyee aux angles REELS
+#  des lames (6 octobre 2026, 15 h) -- il vaut donc pour tous les maitres, cube,
+#  anneau, Vasarely ou variation. (Sa version precedente dessinait un balayage
+#  ideal de la pose du cube : montree pendant que l'anneau pilotait, elle faisait
+#  croire que l'anneau « ne fonctionnait plus ».)
 haut.par.top.expr = ("op('../CUBE_3D/out') if (parent().par.Volume and "
                      "op('../CUBE_3D/out')) else op('../RENDU_TEENSY/out')")
 haut.par.topfill = 'best'
@@ -746,6 +751,75 @@ else:
                   "de depart." % _avant)
     except Exception as _e:
         print("  ATTENTION : la liaison du volume a echoue : %r" % (_e,))
+
+# === CURSEUR REMANENCE DEBUT ===
+#  LA REMANENCE 3D, SOUS LE VOLUME (demande de Benjamin, 6 octobre 2026, 16 h).
+#  C'est la persistance de l'oeil que simule CUBE_3D (b = 1 - age / Persistance) :
+#  la seule chose qui decide de ce qu'on VOIT du balayage. Le curseur pilote
+#  CUBE_3D.Persistance par liaison, comme le volume pilote l'audio ; la valeur
+#  en place est reprise comme position de depart. La bande VOLUME est partagee
+#  en deux (les deux curseurs sont en 'fill') pour ne pas rogner le tableau.
+_cv = op('/project1/scale/CUBE_3D')
+if _cv is None or getattr(_cv.par, 'Persistance', None) is None:
+    print("  REMANENCE : CUBE_3D absent, pas de curseur (installer INSTALLER_CUBE_3D).")
+else:
+    _bande_r = rm.op('volume')
+    if _bande_r is None:
+        _bande_r = enfant(rm, 'volume', containerCOMP, 320, 200)
+        _bande_r.par.alignallow = 'ignore'
+        _bande_r.par.hmode, _bande_r.par.vmode = 'fixed', 'fixed'
+        _bande_r.par.w = 96
+        _bande_r.par.h.expr = 'parent().height'
+        _bande_r.par.x.expr = 'parent().width - me.width'
+        _bande_r.par.y = 0
+        _bande_r.par.align = 'verttb'
+        for _p, _v in (('bgcolorr', 0.055), ('bgcolorg', 0.065), ('bgcolorb', 0.080)):
+            getattr(_bande_r.par, _p).val = _v
+    _titre_r = enfant(_bande_r, 'titre_remanence', textCOMP, 0, -300)
+    _titre_r.par.hmode, _titre_r.par.vmode = 'fill', 'fixed'
+    _titre_r.par.h = 26
+    _titre_r.par.alignorder = 3
+    _titre_r.par.text = 'REMANENCE'
+    for _p, _v in (('fontsize', 11), ('alignx', 'center'),
+                   ('bgcolorr', 0.055), ('bgcolorg', 0.065), ('bgcolorb', 0.080),
+                   ('colorr', 0.62), ('colorg', 0.66), ('colorb', 0.72)):
+        _q = getattr(_titre_r.par, _p, None)
+        if _q is not None:
+            _q.val = _v
+    _curs_r = enfant(_bande_r, 'curseur_remanence', sliderCOMP, 0, -400)
+    _curs_r.par.hmode, _curs_r.par.vmode = 'fill', 'fill'
+    _curs_r.par.alignorder = 4
+    _curs_r.par.slidertype = 'sliderv'
+    _curs_r.par.valuerange1l, _curs_r.par.valuerange1h = 0.02, 1.0   # secondes
+    _curs_r.par.clampvl, _curs_r.par.clampvh = True, True
+    _curs_r.comment = ("Persistance de l'oeil en secondes, 0,02 en bas, 1 en haut. "
+                       "Pilote CUBE_3D.Persistance par liaison.")
+    _val_r = enfant(_bande_r, 'valeur_remanence', textCOMP, 0, -500)
+    _val_r.par.hmode, _val_r.par.vmode = 'fill', 'fixed'
+    _val_r.par.h = 30
+    _val_r.par.alignorder = 5
+    _val_r.par.text.expr = ("'%.2f s' % op('/project1/scale/CUBE_3D').par.Persistance "
+                            "if op('/project1/scale/CUBE_3D') else '-'")
+    for _p, _v in (('fontsize', 15), ('alignx', 'center'),
+                   ('bgcolorr', 0.055), ('bgcolorg', 0.065), ('bgcolorb', 0.080),
+                   ('colorr', 0.85), ('colorg', 0.87), ('colorb', 0.90)):
+        _q = getattr(_val_r.par, _p, None)
+        if _q is not None:
+            _q.val = _v
+    try:
+        _en_place = float(_cv.par.Persistance.eval())
+    except Exception:
+        _en_place = 0.2
+    if str(_cv.par.Persistance.mode) != 'ParMode.BIND':
+        _curs_r.par.value1.val = _en_place
+    try:
+        _cv.par.Persistance.mode = ParMode.BIND
+        _cv.par.Persistance.bindExpr = "op('" + _curs_r.path + "').par.value1"
+        print("  REMANENCE : curseur pose sous le volume, lie a CUBE_3D.Persistance "
+              "(%.2f s en place)." % _en_place)
+    except Exception as _e:
+        print("  ATTENTION : la liaison de la remanence a echoue : %r" % (_e,))
+# === CURSEUR REMANENCE FIN ===
 
 #  LA PLACE RESTANTE, DITE A CHAQUE INSTALLATION. Le tableau a deja grandi
 #  deux fois sans que la boite suive, et la coupe ne se voit PAS : le texte

@@ -45,6 +45,63 @@ proprement par-dessus).
   (vérification de la géométrie), Demi-épaisseur des arêtes (4 cm), Écart
   entre panneaux (10 cm), Couleur, Luminosité, Miroir vertical (calibration
   si le cube tourne à l'envers par rapport à la vidéo d'origine).
+- **LANCER LE CUBE STATIQUE / CUBE STATIQUE EN MARCHE**, le bouton juste sous
+  LANCER LE CUBE : une seule pose, immobile. C'est la rotation du cube de
+  `analyse/capture_cube_statique.png`, retrouvée par `analyse/pose_capture.py`
+  avec le même algorithme que les 300 poses ; le cube est centré dans le volume
+  et agrandi au plus grand demi-côté qui tient entre les panneaux 0 et 9 et dans
+  le rayon des lames (27,2 cm, soit 54 cm de côté). Même module, mêmes LED
+  calculées lame par lame par le GLSL : les dix coupes en découlent. Pour le
+  voir en volume : CUBE_3D (ci-dessous). Réglages page **Cube** : Cube
+  statique, Pose du cube statique (−1 = la capture, 0 à 299 = figer une image
+  de l'animation), Taille du cube statique (1 = le plus grand qui tient). Un
+  seul maître à la fois : il coupe l'animation, l'anneau et Vasarely, et
+  réciproquement. Contrôle hors TouchDesigner :
+  `touchdesigner/verification/test_cube_statique.py` (27 080 LED allumées sur
+  un demi-tour, 2 733 / 4 272 / 1 916 / 1 999 / 2 620 par panneau, symétrique).
+
+### Ce que les pales impriment : CUBE_3D, le volume vu par l'œil
+
+`INSTALLER_CUBE_3D.py` installe le module CUBE_3D, affiché par real_Move
+(bouton **VOLUME BALAYÉ**, les flèches de vue agissent dessus) et par le
+bandeau **RENDU 3D avec rémanence** de SORTIE_SPECTACLE dès qu'un cube a la
+main. Il n'invente aucun balayage : à chaque image, l'image 160 × 80 réellement
+envoyée aux panneaux (`panel_mask_output`, quel que soit le maître) est déposée
+dans dix tranches de voxels de 1 cm aux angles réels des lames
+(`MOTIFS_LED/angles_top`, consigne ou positions Teensy selon « MOTIFS SUR LES
+ANGLES RÉELS »), tout le long de l'arc parcouru depuis l'image précédente ;
+chaque dépôt est daté et pâlit comme dans l'œil (b = 1 − âge / Persistance,
+0,2 s par défaut, extinction sous 3 %). Conséquence : à lames lentes on ne voit
+que des morceaux de cube ; le cube n'apparaît entier que si chaque lame balaye
+un demi-tour en moins d'une persistance (2,5 tours/s à 0,2 s), et l'écart entre
+lames décide de la répartition des morceaux. Vérifié au texel près : chaque LED
+allumée à l'angle courant a son voxel daté de l'image courante. Réglages page
+**Volume** : sources (image, angles), Persistance, Pas de l'arc (2°), Seuil,
+Écart, Miroir vertical (suit ANIMATION_CUBE), contours, Effacer. Tout est sur le
+processeur graphique (atlas 320 × 801 en flottants 32 bits, rebouclé par un
+Feedback TOP ; la clé non commerciale plafonne une texture à 1280 px, d'où deux
+colonnes de cinq tranches).
+
+### Cadence : ce qui coûte vraiment (mesuré le 6 octobre 2026)
+
+Compter les images réellement cuites (un Execute DAT qui incrémente un
+compteur à chaque image ; `absTime.frame` suit l'horloge murale et affiche
+toujours 60). Avec l'éditeur de réseau ouvert sur `/project1/scale` (3 900
+nœuds, 66 viseurs) : 17 images/s. Éditeur navigué dans un petit COMP, ou mode
+Perform : 36 images/s. Sans effet mesurable : la synchronisation verticale des
+six fenêtres, la résolution de `render1` (1280 × 720 → 640 × 360), la fermeture
+de la fenêtre TIMELINES. Les opérateurs pèsent 22 ms de processeur et 16 ms de
+carte graphique par image ; les plus lourds sont les textes de SORTIE_SPECTACLE
+qui se recalculent à chaque image (`timeline/lecture` 2 ms, `timeline/avancement`
+1 ms), `geo1` cuit trois fois par image (trois Render TOP), l'analyse audio
+(ANALYSE_SOUFFLE_COEUR, 26 ms/s), le tableau de real_Move (0,8 ms). CUBE_3D
+coûte 0,5 ms par image.
+
+### Le curseur RÉMANENCE de real_Move
+
+Sous le curseur VOLUME, dans la même bande : la persistance de l'œil de
+CUBE_3D (0,02 à 1 s), liée à `CUBE_3D.Persistance`. Posé par
+`INSTALLER_REAL_MOVE.py` (bloc « CURSEUR REMANENCE »).
 
 ### L'animation s'adapte à n'importe quelle vitesse de rotation
 
@@ -87,7 +144,9 @@ Glisser-déposer le fichier `.py` depuis le Finder dans le réseau
 nœud → Run Script.** C'est équivalent au Textport (les messages MESURE ne
 sont alors simplement pas visibles). Le Text DAT peut être supprimé après.
 
-- `INSTALLER_ANIMATION_CUBE.py` — installe le cube (ré-exécutable sans danger)
+- `INSTALLER_ANIMATION_CUBE.py` — installe le cube et le cube statique
+  (ré-exécutable sans danger : il garde les boutons de l'anneau et de Vasarely
+  et leur place dans le switch)
 - `INSTALLER_ANNEAU_CONE.py` — installe l'anneau-cône (après le cube ; son
   bouton se place sous « CUBE EN MARCHE »)
 - `INSTALLER_VASARELY.py` — installe l'effet Vasarely (après les deux autres ;

@@ -1,0 +1,10 @@
+# Sauvegardes et increments automatiques de TouchDesigner (NOM.N.toe), copies locales
+Backup/
+*.[0-9].toe
+*.[0-9][0-9].toe
+*.[0-9]_CUBE.toe
+*copie.toe
+# Python
+__pycache__/
+# macOS
+.DS_Store

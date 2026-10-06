@@ -151,15 +151,19 @@ def onOffToOn(panelValue):
 \treturn
 """
 
-CB_BOUTON_CUBE_EXCLUSIF = """# Le clic bascule ANIMATION_CUBE.Actif ; quand il s'allume, il coupe
-# l'anneau-cone (un seul maitre a la fois sur la chaine LED).
+CB_BOUTON_CUBE_EXCLUSIF = """# LANCER LE CUBE : l'animation. En s'allumant il coupe le cube statique (meme
+# module), l'anneau et Vasarely (un seul maitre a la fois sur la chaine LED).
 def onOffToOn(panelValue):
-\tp = op('/project1/scale/ANIMATION_CUBE').par.Actif
-\tp.val = 0 if p else 1
-\tif p:
-\t\tautre = op('/project1/scale/ANNEAU_CONE')
-\t\tif autre is not None:
-\t\t\tautre.par.Actif = 0
+\tm = op('/project1/scale/ANIMATION_CUBE')
+\tif m.par.Actif and not m.par.Cubestatique:
+\t\tm.par.Actif = 0
+\t\treturn
+\tm.par.Cubestatique = 0
+\tm.par.Actif = 1
+\tfor autre in ('/project1/scale/ANNEAU_CONE', '/project1/scale/VASARELY'):
+\t\to = op(autre)
+\t\tif o is not None:
+\t\t\to.par.Actif = 0
 \treturn
 """
 
@@ -649,12 +653,8 @@ def desinstaller():
                 etat_cube.par.alignorder = 2
             clic_cube = section.op('bouton/clic')
             if clic_cube is not None:
-                clic_cube.text = (
-                    "# Le clic sur le bouton bascule ANIMATION_CUBE.Actif.\n"
-                    "def onOffToOn(panelValue):\n"
-                    "\tp = op('/project1/scale/ANIMATION_CUBE').par.Actif\n"
-                    "\tp.val = 0 if p else 1\n"
-                    "\treturn\n")
+                # Le meme callback qu'avant l'anneau : il ignore un module absent.
+                _texte(clic_cube, CB_BOUTON_CUBE_EXCLUSIF)
     _detruire(CHEMIN_SCALE + '/' + NOM_MODULE)
     _detruire(CHEMIN_SCALE + '/' + NOM_COMMENT)
     print('ANNEAU_CONE retire ; switch et bouton du cube remis comme avant.')
