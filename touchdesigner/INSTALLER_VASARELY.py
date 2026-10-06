@@ -251,34 +251,7 @@ def onOffToOn(panelValue):
 \treturn
 """
 
-CB_BOUTON_CUBE_3 = """# LANCER LE CUBE : l'animation. En s'allumant il coupe le cube statique (meme
-# module), l'anneau et Vasarely (un seul maitre a la fois sur la chaine LED).
-def onOffToOn(panelValue):
-\tm = op('/project1/scale/ANIMATION_CUBE')
-\tif m.par.Actif and not m.par.Cubestatique:
-\t\tm.par.Actif = 0
-\t\treturn
-\tm.par.Cubestatique = 0
-\tm.par.Actif = 1
-\tfor autre in ('/project1/scale/ANNEAU_CONE', '/project1/scale/VASARELY'):
-\t\to = op(autre)
-\t\tif o is not None:
-\t\t\to.par.Actif = 0
-\treturn
-"""
 
-CB_BOUTON_ANNEAU_3 = """# Le clic bascule ANNEAU_CONE.Actif ; en s'allumant il coupe le cube et
-# le vasarely (un seul maitre a la fois sur la chaine LED).
-def onOffToOn(panelValue):
-\tp = op('/project1/scale/ANNEAU_CONE').par.Actif
-\tp.val = 0 if p else 1
-\tif p:
-\t\tfor autre in ('/project1/scale/ANIMATION_CUBE', '/project1/scale/VASARELY'):
-\t\t\to = op(autre)
-\t\t\tif o is not None:
-\t\t\t\to.par.Actif = 0
-\treturn
-"""
 
 LISEZ_MOI = """VASARELY -- LA GRILLE OP-ART BOMBEE, REVELEE PAR LES LAMES
 
@@ -619,12 +592,9 @@ def installer():
     etat_anneau = section.op('etat_anneau')
     if etat_anneau is not None:
         etat_anneau.par.alignorder = 5
-    clic_cube = section.op('bouton/clic')
-    if clic_cube is not None:
-        _texte(clic_cube, CB_BOUTON_CUBE_3)
-    clic_anneau = section.op('bouton_anneau/clic')
-    if clic_anneau is not None:
-        _texte(clic_anneau, CB_BOUTON_ANNEAU_3)
+    #  Les boutons du cube et de l'anneau ne sont PAS reecrits : chacun porte
+    #  son propre texte, qui coupe deja les deux autres maitres (regle du
+    #  6 octobre 2026 : une seule source par bouton).
 
     chemin_actif = "op('/project1/scale/VASARELY').par.Actif"
     bouton = section.create(containerCOMP, 'bouton_vasarely')

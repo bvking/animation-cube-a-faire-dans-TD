@@ -151,6 +151,10 @@ sont alors simplement pas visibles). Le Text DAT peut être supprimé après.
   bouton se place sous « CUBE EN MARCHE »)
 - `INSTALLER_VASARELY.py` — installe l'effet Vasarely (après les deux autres ;
   son bouton se place sous « LANCER L'ANNEAU »)
+- `INSTALLER_REDETECTION_TEENSY.py` — la carte Teensy rebranchée après le
+  démarrage est redétectée toute seule (patch du DAT MOTEURS_TEENSY/horloge et
+  de la copie de l'installeur Teensy rangée dans le projet ; à reporter dans
+  le dépôt panneaux-led-rotatifs)
 - `INSTALLER_REAL_MOVE.py` — installe la fenêtre **real_Move** (le contrôle du
   mouvement réel) ; indépendante des trois animations, ré-exécutable
 - `DESINSTALLER_ANIMATION_CUBE.py` / `DESINSTALLER_ANNEAU_CONE.py` /
@@ -165,7 +169,7 @@ session) fait la même chose. Enregistrer sous ensuite.
 
 - Les formules portées (positions des LED, échelle, pose, distance aux arêtes,
   exports) reproduisent les **20 valeurs de contrôle** du prompt
-  (`PROMPT_TouchDesigner_afficheur.md`, partie 5) — voir
+  (les chiffres de la partie 6 de `PROMPT_CE_QUE_JE_VEUX_FAIRE.md`) — voir
   `touchdesigner/verification/test_controle.py` (python3 + numpy, exécutable hors
   TouchDesigner) : positions au 1/1000, L = 61.2296, h₀ = 16.9055, comptes de
   LED exacts (cube fixe 62 848 ; images 0/1/100/150/299), ordre des octets.

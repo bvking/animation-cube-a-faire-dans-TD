@@ -21,7 +21,7 @@ Simulation en JavaScript ([p5.js](https://p5js.org)) d'un afficheur volumétriqu
 | `analyse/analyse_cube_animatio.html` | Outil pour recalculer les poses à partir des images |
 | `analyse/analyse_cube.js` | Code de l'analyse d'image utilisé par l'outil |
 | `cube_animatio/` | Les images `frame_00.png` … `frame_299.png` (seulement utiles pour l'outil d'analyse) |
-| `PROMPT_TouchDesigner_afficheur.md` | Prompt pour faire construire la version TouchDesigner (10 panneaux de 160 × 8 LED, sortie vers l'ESP32) par une IA reliée à TouchDesigner |
+| `PROMPT_CE_QUE_JE_VEUX_FAIRE.md` | **Le seul prompt du dépôt** : ce que je veux faire, pour une IA qui ne connaît ni le projet ni le logiciel cible (160 × 8 LED, formules, chiffres de contrôle, pièges) |
 | `touchdesigner/` | Option « animation-cube » pour le projet TouchDesigner SAISON_9 : installateur à exécuter dans le Textport, mode d'emploi ([touchdesigner/README.md](touchdesigner/README.md)) et vérifications. Ajoute un bouton dans la fenêtre SORTIE_SPECTACLE |
 | `SAISON_9_CUBE_ANNEAU_VASARELY_CUBE.toe` | **Le projet prêt à l'emploi** (6 octobre 2026) : animation-cube, cube statique, anneau-cône respirant et grille Vasarely, chacun sur son bouton dans SORTIE_SPECTACLE (un seul maître à la fois) ; CUBE_3D imprime ce que les pales affichent réellement (real_Move, VOLUME BALAYÉ, curseur RÉMANENCE) ; motifs sur les angles rapportés par la Teensy. TouchDesigner en garde des incréments locaux `….N_CUBE.toe`, ignorés par git |
 | `SAISON_9_CUBE_ANNEAU_VASARELY.toe` | Version précédente du même projet (cube animé, anneau, Vasarely ; CUBE_3D encore en balayage idéal) |

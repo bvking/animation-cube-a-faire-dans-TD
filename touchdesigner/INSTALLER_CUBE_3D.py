@@ -552,6 +552,11 @@ cam.comment = ("Suit les fleches de real_Move (Azimut, Elevation, Distance), cib
 rendu = enfant(cv, 'rendu', renderTOP, 320, 0)
 rendu.par.camera = cam
 rendu.par.geometry = 'geo_tranches geo_cadres'   # des OBJETS, jamais le baseCOMP (voir en tete)
+#  640 x 360 : real_Move n'affiche pas plus grand, et le bandeau de
+#  SORTIE_SPECTACLE fait 135 px de haut. Le rendu coute 0,45 ms en 1280 x 720,
+#  moins du quart ici. (Demande de Benjamin, 6 octobre : « au maximum ».)
+rendu.par.outputresolution = 'custom'
+rendu.par.resolutionw, rendu.par.resolutionh = 640, 360
 rendu.par.bgcolorr = rendu.par.bgcolorg = rendu.par.bgcolorb = 0.0
 rendu.par.bgcolora = 1.0
 rendu.par.transparency = 'sortedblending'

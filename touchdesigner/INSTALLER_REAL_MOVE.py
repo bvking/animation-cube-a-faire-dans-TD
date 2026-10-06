@@ -790,10 +790,16 @@ else:
     _curs_r.par.hmode, _curs_r.par.vmode = 'fill', 'fill'
     _curs_r.par.alignorder = 4
     _curs_r.par.slidertype = 'sliderv'
-    _curs_r.par.valuerange1l, _curs_r.par.valuerange1h = 0.02, 1.0   # secondes
+    #  LA SOURIS ECRIT value0 (remis a l'echelle par valuerange0), et value1 n'est
+    #  qu'une expression qui recopie value0 : c'est ainsi que le slider de
+    #  TouchDesigner est fait (son panelexec1). Poser value1 en constante casse
+    #  la liaison avec la souris -- c'est l'erreur du 6 octobre, 18 h.
+    _curs_r.par.valuerange0l, _curs_r.par.valuerange0h = 0.02, 1.0   # secondes
+    _curs_r.par.valuerange1l, _curs_r.par.valuerange1h = 0.02, 1.0
     _curs_r.par.clampvl, _curs_r.par.clampvh = True, True
+    _curs_r.par.value1.expr = 'me.par.value0'
     _curs_r.comment = ("Persistance de l'oeil en secondes, 0,02 en bas, 1 en haut. "
-                       "Pilote CUBE_3D.Persistance par liaison.")
+                       "La souris ecrit value0 ; CUBE_3D.Persistance y est lie.")
     _val_r = enfant(_bande_r, 'valeur_remanence', textCOMP, 0, -500)
     _val_r.par.hmode, _val_r.par.vmode = 'fill', 'fixed'
     _val_r.par.h = 30
@@ -811,10 +817,10 @@ else:
     except Exception:
         _en_place = 0.2
     if str(_cv.par.Persistance.mode) != 'ParMode.BIND':
-        _curs_r.par.value1.val = _en_place
+        _curs_r.par.value0.val = _en_place
     try:
         _cv.par.Persistance.mode = ParMode.BIND
-        _cv.par.Persistance.bindExpr = "op('" + _curs_r.path + "').par.value1"
+        _cv.par.Persistance.bindExpr = "op('" + _curs_r.path + "').par.value0"
         print("  REMANENCE : curseur pose sous le volume, lie a CUBE_3D.Persistance "
               "(%.2f s en place)." % _en_place)
     except Exception as _e:
