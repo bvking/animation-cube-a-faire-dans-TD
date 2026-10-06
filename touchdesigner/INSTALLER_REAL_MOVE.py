@@ -228,7 +228,11 @@ haut.par.hmode, haut.par.vmode = 'fill', 'fill'
 # L'ordre d'empilement d'une disposition verttb ne suit PAS la position des
 # noeuds : il faut le dire. 0 en haut, 2 en bas.
 haut.par.alignorder = 0
-haut.par.top = sortie_panneaux
+#  L'image du haut bascule entre l'instant et le volume balaye. L'expression
+#  est GARDEE : CUBE_3D peut ne pas etre installe, et une expression qui leve
+#  a chaque cuisson rendrait le panneau rouge au lieu de se taire.
+haut.par.top.expr = ("op('../CUBE_3D/out') if (parent().par.Volume and "
+                     "op('../CUBE_3D/out')) else op('../RENDU_TEENSY/out')")
 haut.par.topfill = 'best'
 haut.par.bgcolorr, haut.par.bgcolorg, haut.par.bgcolorb = 0.02, 0.02, 0.025
 haut.comment = "Les dix panneaux, angles rapportes par la Teensy."
@@ -327,20 +331,46 @@ etiquette.par.hmode, etiquette.par.vmode = 'fixed', 'fixed'
 #  LA NOTE RETRECIT POUR LES FLECHES. La barre ne dispose que de 1184 px
 #  utiles -- la bande « volume » masque les 96 de droite -- et il en faut
 #  14 + 420 (interrupteur) + 14 + 238 (fleches) + 14 = 700 avant elle.
-etiquette.par.w, etiquette.par.h = 470, 36
+#  LE BOUTON DU VOLUME, entre les fleches et la note. La barre ne dispose que
+#  de 1184 px utiles : 14 + 420 + 14 + 238 + 14 + 170 + 14 = 884 avant elle.
+bouton_vol = enfant(barre, 'volume_balaye', buttonCOMP, 750, 0)
+bouton_vol.par.buttontype = 'toggledown'
+bouton_vol.par.hmode, bouton_vol.par.vmode = 'fixed', 'fixed'
+bouton_vol.par.w, bouton_vol.par.h = 170, 36
+bouton_vol.par.alignallow = 'allow'
+bouton_vol.par.alignorder = 2
+bouton_vol.par.label = 'VOLUME BALAYE'
+bouton_vol.par.fontsize = 12
+for _p, _v in (('bgcolorr', 0.10), ('bgcolorg', 0.12), ('bgcolorb', 0.15),
+               ('colorr', 0.88), ('colorg', 0.90), ('colorb', 0.92)):
+    _q = getattr(bouton_vol.par, _p, None)
+    if _q is not None:
+        _q.val = _v
+bouton_vol.comment = ("Bascule le haut de la fenetre entre l'INSTANT "
+                      "(RENDU_TEENSY, dix segments) et le VOLUME BALAYE "
+                      "(CUBE_3D, ou le cube se voit).")
+_v0 = getattr(bouton_vol.par, 'value0', None)
+if _v0 is not None:
+    _v0.mode = ParMode.BIND
+    _v0.bindExpr = "op('/project1/scale/real_Move').par.Volume"
+
+etiquette.par.w, etiquette.par.h = 300, 36
 etiquette.par.alignallow = 'allow'
-etiquette.par.alignorder = 2
+etiquette.par.alignorder = 3
 #  L'EXPRESSION EST GARDEE, comme celle du texte des chiffres soixante
 #  lignes plus haut. Sans garde, elle plante a chaque cuisson quand
 #  MOTIFS_LED est absent -- et MOTIFS_LED ne vit que dans le .toe, aucun
 #  script du depot ne le cree.
+#  LE TEXTE TIENT DANS SA BOITE. Elle est passee de 680 a 300 px pour faire
+#  place aux fleches et au bouton du volume : la phrase longue y serait coupee
+#  en plein mot, exactement le defaut corrige sur le tableau de chiffres.
 etiquette.par.text.expr = (
-    "(('les motifs suivent les positions REELLES de la Teensy'"
+    "(('motifs : angles REELS'"
     "  if op('/project1/scale/MOTIFS_LED').par.Anglesreels"
-    "  else 'les motifs suivent la CONSIGNE -- decale du retard du suiveur')"
+    "  else 'motifs : CONSIGNE')"
     " if op('/project1/scale/MOTIFS_LED')"
     " and hasattr(op('/project1/scale/MOTIFS_LED').par, 'Anglesreels')"
-    " else 'MOTIFS_LED absent : pas de bascule des motifs')")
+    " else 'MOTIFS_LED absent')")
 for _p, _v in (('fontsize', 13), ('alignx', 'left'),
                ('bgcolorr', 0.07), ('bgcolorg', 0.08), ('bgcolorb', 0.10),
                ('colorr', 0.62), ('colorg', 0.66), ('colorb', 0.72)):
@@ -400,6 +430,20 @@ _reglage_vue('Elevation', 'Elevation (deg)', -89.0, 89.0,
              "Hauteur de la camera au-dessus du plan de la cible. Bornee a "
              "plus ou moins 89 : a 90 exactement la camera est a la verticale "
              "et lookat n'a plus d'horizon pour orienter l'image.")
+if 'Volume' not in _deja:
+    #  LE HAUT DE real_Move MONTRE DEUX CHOSES TRES DIFFERENTES.
+    #  Decoche : RENDU_TEENSY, l'INSTANT -- les dix lames a l'angle qu'elles
+    #  ont maintenant. C'est juste pour piloter les panneaux, et c'est
+    #  structurellement incapable de ressembler a un cube : dix segments.
+    #  Coche : CUBE_3D, le VOLUME BALAYE d'un demi-tour, avec les contours des
+    #  dix lames. C'est ce que l'oeil recompose, et c'est la qu'un cube se voit.
+    _q = _pg.appendToggle('Volume', label='VOLUME BALAYE (au lieu de l instant)')[0]
+    _q.default = False
+    _q.val = False
+    _q.help = ("Decoche : le rendu d'un INSTANT, dix lames minces -- ce qui part "
+               "aux panneaux. Coche : le volume balaye d'un demi-tour avec les "
+               "contours des dix lames, c'est-a-dire ce que l'oeil recompose. "
+               "Un cube ne peut se voir que coche.")
 _reglage_vue('Distance', 'Distance', 1.0, 30.0,
              "Eloignement de la camera. La cible reste au centre quel que "
              "soit l'eloignement.")

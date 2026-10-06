@@ -312,6 +312,19 @@ REGLAGES = (
      "persistance, donc PLUS qu'un demi-tour : rien ne s'eteint jamais, le "
      "volume entier reste visible avec un secteur clair qui tourne. Descendre "
      "a 0,1 s ne laisserait qu'un secteur de 70 degres -- un balayage."),
+    ('Anglessrc', 'op', 'Angles des lames (CHOP)', None, None, None,
+     "D'ou viennent les angles des dix contours de panneaux. Vide : on tourne "
+     "a l'horloge interne, comme le simulateur. Renseigne "
+     "(MOTIFS_LED/angles_choix) : les contours suivent les VRAIES lames, ce "
+     "qui est le seul choix coherent dans la fenetre real_Move."),
+    ('Traitcadres', 'float', 'Epaisseur du trait (cm)', 1.0, 0.2, 5.0,
+     "Largeur des quatre barres qui dessinent le contour d'une lame. Le "
+     "simulateur trace 1 px ; ici c'est de la geometrie, donc une vraie "
+     "epaisseur en centimetres."),
+    ('Eclatcadres', 'float', 'Eclat des contours', 1.0, 0.0, 4.0,
+     "Multiplie le gris des contours. 1 = les valeurs du simulateur, 120 pour "
+     "la lame 0 et 60 pour les neuf autres. Monter si les contours se perdent "
+     "a cote du rouge des LED."),
     ('Remanenceanimee', 'toggle', 'Faire tourner la remanence', 0, 0, 1,
      "Decoche, le Script CHOP ne cuit que quand la pose change : un cube fixe "
      "ne coute plus rien par image. Coche, il lit l'horloge et se recalcule a "
@@ -350,6 +363,10 @@ for nom, genre, label, defaut, mini, maxi, aide in REGLAGES:
     q.help = aide
 if not cv.par.Posesrc.eval():
     cv.par.Posesrc = anim.op('pose')
+if not cv.par.Anglessrc.eval():
+    _a = scale.op('MOTIFS_LED/angles_choix') or scale.op('MOTIFS_LED/angles')
+    if _a is not None:
+        cv.par.Anglessrc = _a
 
 # --- le nuage de LED allumees ----------------------------------------------
 cb = enfant(cv, 'voxels_callbacks', textDAT, -400, 0)
@@ -402,6 +419,149 @@ bille.render = True
 bille.comment = "Une LED. Instanciee autant de fois qu'il y en a d'allumees."
 
 
+# --- les contours des dix panneaux -----------------------------------------
+#  SANS EUX L'IMAGE N'EST PAS LISIBLE. Un nuage de points rouges flottant dans
+#  le noir ne dit pas ou est le dispositif : on ne sait ni ou est l'axe, ni
+#  dans quel sens on regarde, ni a quelle profondeur sont les tranches. Le
+#  simulateur dessine les dix bandes, et c'est ce qui fait lire l'image comme
+#  « un cube au milieu de dix lames » plutot que comme une tache.
+#
+#  Le rectangle fait 2 x (halfLength + pas/2) sur 2 x (halfWidth + pas/2), soit
+#  160 x 8 cm, et ses quatre coins a l'angle a sont, d'apres le programme :
+#     (-L c + W sn, -L sn - W c)   (L c + W sn,  L sn - W c)
+#     ( L c - W sn,  L sn + W c)   (-L c - W sn, -L sn + W c)
+#  ce qui est exactement le rectangle [-L, L] x [-W, W] TOURNE de a autour de
+#  z. On le dessine donc une fois a l'angle zero et on l'instancie dix fois,
+#  chacune a son angle et a sa profondeur : dix instances ne coutent rien,
+#  alors que reconstruire la geometrie a chaque image en couterait.
+#
+#  GRIS 120 POUR LE PANNEAU 0, GRIS 60 POUR LES NEUF AUTRES. C'est le SEUL
+#  repere visuel de l'avant du rig : sans lui on ne sait plus de quel cote on
+#  regarde le volume.
+CODE_CADRES = '''# Les dix contours de panneaux : angle, profondeur, couleur.
+#
+# Dix echantillons seulement : ce Script CHOP peut cuire a chaque image sans
+# que cela se voie, contrairement a celui des voxels.
+#
+# L'ANGLE VIENT DES LAMES REELLES quand on les a sous la main. real_Move est la
+# fenetre du mouvement REEL : montrer des contours a un angle invente pendant
+# que les chiffres en dessous en affichent un autre serait un contresens.
+# A defaut, on retombe sur l'horloge interne, a Tours par seconde.
+
+import numpy
+
+
+def onCook(scriptOp):
+    scriptOp.clear()
+    comp = parent()
+    n = 10
+    src = comp.par.Anglessrc.eval()
+    ang = None
+    if src is not None:
+        try:
+            if src.numChans >= n:
+                ang = numpy.array([float(src[i].eval()) for i in range(n)])
+            elif src.numChans == 1 and src.numSamples >= n:
+                ang = numpy.array([float(src[0][i]) for i in range(n)])
+        except Exception:
+            ang = None
+    if ang is None:
+        #  Pas de lames a lire : on tourne a l horloge, avec le decalage en
+        #  helice. C'est ce que fait le simulateur, qui n'a pas de moteurs.
+        base = (absTime.seconds * float(comp.par.Toursparseconde) * 360.0) % 360.0
+        ang = base + float(comp.par.Ecarthelice) * numpy.arange(n)
+
+    ecart = float(comp.par.Ecartcm)
+    e = 1.0 / float(comp.par.Cmparunite)
+    z = (4.5 - numpy.arange(n)) * ecart * e
+    #  gris 120 pour la lame 0, gris 60 pour les neuf autres
+    g = numpy.full(n, 60.0 / 255.0)
+    g[0] = 120.0 / 255.0
+    g = g * float(comp.par.Eclatcadres)
+    scriptOp.numSamples = n
+    zz = numpy.zeros(n)
+    for nom, val in (('tx', zz), ('ty', zz), ('tz', z),
+                     ('rx', zz), ('ry', zz), ('rz', ang),
+                     ('r', g), ('g', g), ('b', g)):
+        scriptOp.appendChan(nom).vals = numpy.asarray(val, dtype=numpy.float32)
+    scriptOp.rate = me.time.rate
+    return
+'''
+
+cb_cadres = enfant(cv, 'cadres_callbacks', textDAT, -400, -200)
+cb_cadres.text = CODE_CADRES
+cadres = enfant(cv, 'cadres', scriptCHOP, -150, -200)
+cadres.par.callbacks = cb_cadres
+cadres.comment = "Dix echantillons : angle, profondeur et gris de chaque lame."
+
+geo_cadres = enfant(cv, 'geo_cadres', geometryCOMP, 100, -200)
+for _d in geo_cadres.children:
+    if getattr(_d, 'render', False) and _d.name != 'cadre':
+        _d.render = False          # le torusPOP par defaut, voir plus haut
+CODE_CADRE = '''# Le contour d'UNE lame, a l'angle zero : quatre barres fines.
+#
+# PAS UN Wireframe SOP. Il fabrique bien les aretes, mais l'INSTANCIATEUR NE
+# LES TRANSFORME PAS : on obtient une seule lame, immobile, quel que soit le
+# nombre d'instances demande et quelle que soit la source. Verifie en branchant
+# 31 424 instances dessus : une seule apparaissait. Un polygone ordinaire, lui,
+# s'instancie normalement -- d'ou ces quatre quadrilateres ecrits a la main.
+#
+# PAS UNE PLAQUE PLEINE NON PLUS : elle masquerait le cube. Le simulateur ne
+# dessine que le CONTOUR du rectangle (volumetric3D.js:535-548), trait de 1 px.
+
+import numpy
+
+
+def onCook(scriptOp):
+    scriptOp.clear()
+    comp = parent()
+    cm = float(comp.par.Cmparunite)
+    L = (160.0 / 2.0) / cm          # demi-longueur, 80 cm
+    W = (8.0 / 2.0) / cm            # demi-largeur, 4 cm
+    e = float(comp.par.Traitcadres) / cm
+    e = min(e, W * 0.9)
+    barres = ((-L, L, -W, -W + e),          # bord bas
+              (-L, L, W - e, W),            # bord haut
+              (-L, -L + e, -W + e, W - e),  # bord gauche
+              (L - e, L, -W + e, W - e))    # bord droit
+    for x0, x1, y0, y1 in barres:
+        pr = scriptOp.appendPoly(4, closed=True, addPoints=True)
+        for i, (x, y) in enumerate(((x0, y0), (x1, y0), (x1, y1), (x0, y1))):
+            pr[i].point.x, pr[i].point.y, pr[i].point.z = x, y, 0.0
+    return
+'''
+
+cb_cadre = enfant(cv, 'cadre_callbacks', textDAT, -400, -380)
+cb_cadre.text = CODE_CADRE
+cadre = enfant(geo_cadres, 'cadre', scriptSOP, 0, 0)
+cadre.par.callbacks = cb_cadre
+cadre.render = True
+cadre.comment = ("Le contour d'UNE lame, a l'angle zero : quatre barres fines, "
+                 "160 x 8 cm. Les dix sont des instances.")
+#  BLANC ici, et non le rouge des LED : c'est la couleur d'instance qui porte
+#  le gris 120 du panneau 0 et le gris 60 des neuf autres, et elle MULTIPLIE
+#  celle du materiau. Un materiau rouge donnerait des contours rouges.
+mat_gris = enfant(cv, 'constant_gris', constantMAT, -150, -440)
+mat_gris.par.colorr = mat_gris.par.colorg = mat_gris.par.colorb = 1.0
+geo_cadres.par.material = mat_gris
+for _mort in ('ligne1',):          # residus de versions precedentes
+    _o = cv.op(_mort)
+    if _o is not None:
+        _o.destroy()
+_o = geo_cadres.op('fil')
+if _o is not None:
+    _o.destroy()
+geo_cadres.par.instancing = True
+geo_cadres.par.instanceop = cadres
+#  LES SIX CANAUX, pas seulement ceux qui varient : laisser tx, ty, rx et ry
+#  vides est sans effet ici, mais les nommer rend le reglage lisible.
+geo_cadres.par.instancetx, geo_cadres.par.instancety, geo_cadres.par.instancetz = 'tx', 'ty', 'tz'
+geo_cadres.par.instancerx, geo_cadres.par.instancery, geo_cadres.par.instancerz = 'rx', 'ry', 'rz'
+geo_cadres.par.instancecolorop = cadres
+geo_cadres.par.instancer, geo_cadres.par.instanceg, geo_cadres.par.instanceb = 'r', 'g', 'b'
+geo_cadres.par.instancecolormode = 'multiply'
+
+
 # --- la vue : la camera du simulateur, au cadrage du simulateur -------------
 #  volumetric3D.js:530-531 pose la vue de base a rotateX(-0.35) puis
 #  rotateY(0.6) radians, soit -20,05 et +34,38 degres. On la reproduit en
@@ -431,7 +591,10 @@ cam.comment = ("La vue de base du simulateur p5 : azimut 34,38, elevation "
 
 rendu = enfant(cv, 'rendu', renderTOP, 320, 0)
 rendu.par.camera = cam
-rendu.par.geometry = geo
+#  Le rendu doit voir les DEUX geometries, le nuage et les contours. Un
+#  renderTOP n'accepte qu'un operateur : on le laisse donc sur le COMP qui les
+#  contient tous les deux, et ce sont les drapeaux de rendu qui decident.
+rendu.par.geometry = cv
 #  fond NOIR PUR repeint a chaque image, aucune accumulation (:503). Toute la
 #  rememanence est deja dans la couleur de chaque point : un Feedback TOP
 #  rajouterait des arcs baveux et une trainee qui depend du framerate.
