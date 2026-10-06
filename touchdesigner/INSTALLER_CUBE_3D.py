@@ -211,8 +211,19 @@ def onCook(scriptOp):
     #  age = (rotation - phi) replie sur 180 degres : l'angle parcouru depuis le
     #  dernier passage d'un demi-bras. Le repli sur 180 et non 360 est ce qui
     #  fait que les DEUX demi-bras d'une lame comptent.
+    #  LE TEMPS NE RENTRE ICI QUE SI ON LE DEMANDE. Lire absTime rend le Script
+    #  CHOP DEPENDANT DU TEMPS : TouchDesigner le recuit alors a CHAQUE image,
+    #  sur le fil principal, pour quinze millisecondes de numpy -- plus trente
+    #  mille instances a dessiner. Le fil sature et l'editeur ne repond plus ;
+    #  c'est arrive, et il a fallu redemarrer TouchDesigner.
+    #  Decoche (le defaut) : la phase est un simple parametre, le CHOP ne cuit
+    #  que lorsque la POSE change. Un cube fixe ne coute alors plus rien.
+    #  Coche : la remanence tourne pour de bon, au prix d'une cuisson par image.
     tours = float(comp.par.Toursparseconde)
-    rot = (absTime.seconds * tours * 360.0) % 360.0
+    if comp.par.Remanenceanimee:
+        rot = (absTime.seconds * tours * 360.0) % 360.0
+    else:
+        rot = float(comp.par.Phaseremanence) % 360.0
     pa = max(1e-6, 360.0 * tours * float(comp.par.Persistance))
     b = numpy.clip(1.0 - numpy.mod(rot - PHI, 180.0) / pa, 0.0, 1.0)
     #  13 paliers : round(c b / 17) * 17 sur 0..255. Un degrade lisse se verrait
@@ -295,6 +306,15 @@ REGLAGES = (
      "persistance, donc PLUS qu'un demi-tour : rien ne s'eteint jamais, le "
      "volume entier reste visible avec un secteur clair qui tourne. Descendre "
      "a 0,1 s ne laisserait qu'un secteur de 70 degres -- un balayage."),
+    ('Remanenceanimee', 'toggle', 'Faire tourner la remanence', 0, 0, 1,
+     "Decoche, le Script CHOP ne cuit que quand la pose change : un cube fixe "
+     "ne coute plus rien par image. Coche, il lit l'horloge et se recalcule a "
+     "CHAQUE image -- quinze millisecondes de numpy sur le fil principal, plus "
+     "trente mille instances a dessiner. A n'allumer que pour voir tourner le "
+     "secteur clair, et pas en meme temps que le reste du spectacle."),
+    ('Phaseremanence', 'float', 'Phase de la remanence (deg)', 0.0, 0.0, 360.0,
+     "La position du secteur clair quand la remanence ne tourne pas. Sans "
+     "effet si « Faire tourner la remanence » est coche."),
     ('Tailleled', 'float', 'Taille d une LED (cm)', 1.5, 0.5, 5.0,
      "Diametre de la bille dessinee a l'endroit de chaque LED."),
     ('Cmparunite', 'float', 'Centimetres par unite de scene', CM_PAR_UNITE,
@@ -307,6 +327,10 @@ for nom, genre, label, defaut, mini, maxi, aide in REGLAGES:
         continue
     if genre == 'op':
         q = pg.appendOP(nom, label=label)[0]
+    elif genre == 'toggle':
+        q = pg.appendToggle(nom, label=label)[0]
+        q.default = bool(defaut)
+        q.val = bool(defaut)
     elif genre == 'int':
         q = pg.appendInt(nom, label=label)[0]
         q.default = defaut
@@ -363,7 +387,8 @@ for n in ('tx', 'ty', 'tz'):
 
 bille = enfant(geo, 'bille', sphereSOP, 0, 0)
 bille.par.type = 'poly'                 # une vraie maille, pas une primitive
-bille.par.rows, bille.par.cols = 4, 6   # basse definition : des milliers d'instances
+bille.par.rows, bille.par.cols = 3, 4   # 8 triangles : il y en a des dizaines
+#  de milliers, et chacune ne couvre que deux pixels a l'ecran.
 for _n in ('radx', 'rady', 'radz'):
     getattr(bille.par, _n).expr = ("parent(2).par.Tailleled / "
                                    "parent(2).par.Cmparunite / 2")
