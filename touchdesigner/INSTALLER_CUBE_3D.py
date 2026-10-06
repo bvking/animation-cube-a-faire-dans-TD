@@ -292,7 +292,13 @@ REGLAGES = (
      "les directions t ET t+180, donc dix lames a 18 degres donnent dix "
      "directions distinctes reparties sur le demi-tour. A 36 les lames 5 a 9 "
      "retombent exactement sur les lames 0 a 4 : cinq directions au lieu de "
-     "dix, l'eventail est casse et la moitie du volume n'est plus balayee."),
+     "dix A CHAQUE INSTANT, l'eventail est casse. MESURE : sur un demi-tour "
+     "COMPLET les deux allument le meme nombre de LED -- 31 424 a 0, 18 et "
+     "36 degres -- car chaque lame balaye les memes 90 angles quel que soit "
+     "son decalage. L'helice change la repartition dans le TEMPS : le "
+     "scintillement, l'equilibrage, la part du cube allumee a un instant. "
+     "Garde un MULTIPLE DU PAS (2 degres a 180 rafraichissements) : sinon "
+     "la valeur de controle de 31 424 ne tient plus."),
     ('Epaisseur', 'float', 'Demi-epaisseur aretes (cm)', 4.0, 1.0, 10.0,
      "4 cm dans le simulateur, donc des aretes de 8 cm. C'est 2,9 fois plus "
      "epais que le trait des images d'origine : un choix, pas une mesure."),
