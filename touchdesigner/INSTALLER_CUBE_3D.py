@@ -223,7 +223,10 @@ def onCook(scriptOp):
     scriptOp.numSamples = n
     for nom, val in (('tx', X * e), ('ty', Y * e), ('tz', Z * e), ('phi', PHI)):
         scriptOp.appendChan(nom).vals = numpy.asarray(val, dtype=numpy.float32)
-    scriptOp.rate = me.time.rate
+    #  PAS me.time.rate ICI : lire me.time rend le Script CHOP dependant du
+    #  temps, donc recuit a chaque image -- ce qu'on cherche precisement a
+    #  eviter puisque rien de ce qu'il sort ne depend du temps.
+    scriptOp.rate = project.cookRate
     return
 '''
 
@@ -466,13 +469,15 @@ geo.par.material = mat_led
 for n in ('tx', 'ty', 'tz'):
     getattr(geo.par, n).val = 0.0
 
-bille = enfant(geo, 'bille', sphereSOP, 0, 0)
-bille.par.type = 'poly'                 # une vraie maille, pas une primitive
-bille.par.rows, bille.par.cols = 3, 4   # 8 triangles : il y en a des dizaines
-#  de milliers, et chacune ne couvre que deux pixels a l'ecran.
-for _n in ('radx', 'rady', 'radz'):
+#  UNE BOITE, PAS UNE SPHERE. Une sphereSOP, meme reglee au minimum, sort 80
+#  primitives : multipliees par trente mille LED cela faisait 2,5 MILLIONS de
+#  triangles par image, et le rendu coutait 222 ms. Une boite en fait 12, soit
+#  377 000 au total -- sept fois moins. A deux pixels d'ecran, la difference de
+#  forme ne se voit pas ; celle de cout, oui.
+bille = enfant(geo, 'bille', boxSOP, 0, 0)
+for _n in ('sizex', 'sizey', 'sizez'):
     getattr(bille.par, _n).expr = ("parent(2).par.Tailleled / "
-                                   "parent(2).par.Cmparunite / 2")
+                                   "parent(2).par.Cmparunite")
 bille.render = True
 bille.comment = "Une LED. Instanciee autant de fois qu'il y en a d'allumees."
 
@@ -542,7 +547,10 @@ def onCook(scriptOp):
                      ('rx', zz), ('ry', zz), ('rz', ang),
                      ('r', g), ('g', g), ('b', g)):
         scriptOp.appendChan(nom).vals = numpy.asarray(val, dtype=numpy.float32)
-    scriptOp.rate = me.time.rate
+    #  PAS me.time.rate ICI : lire me.time rend le Script CHOP dependant du
+    #  temps, donc recuit a chaque image -- ce qu'on cherche precisement a
+    #  eviter puisque rien de ce qu'il sort ne depend du temps.
+    scriptOp.rate = project.cookRate
     return
 '''
 
@@ -658,10 +666,23 @@ rendu.par.geometry = cv
 #  rajouterait des arcs baveux et une trainee qui depend du framerate.
 rendu.par.bgcolorr = rendu.par.bgcolorg = rendu.par.bgcolorb = 0.0
 rendu.par.bgcolora = 1.0
+#  PAS DE TRI PAR TRANSPARENCE. Nos fragments sont OPAQUES -- le nuanceur jette
+#  les LED eteintes au lieu de les melanger -- et trier des centaines de
+#  milliers de triangles a chaque image coute cher pour rien.
+rendu.par.transparency = 'alphatocoverage'
 sortie = enfant(cv, 'out', nullTOP, 480, 0)
 if not sortie.inputs:
     sortie.inputConnectors[0].connect(rendu)
-sortie.viewer = True
+#  SURTOUT PAS sortie.viewer = True. Un viseur allume force TOUTE la chaine a
+#  cuire a chaque image, meme quand personne ne regarde : le rendu coutait 222 ms
+#  par image, le Script CHOP 39, le nuanceur 18 -- 279 ms pour un budget de 50.
+#  TouchDesigner s'est retrouve affame au point que le panneau SORTIE_SPECTACLE
+#  ne cuisait plus DU TOUT (une seule cuisson contre 4 000 pour ce rendu) : plus
+#  aucun clic n'y arrivait, ni sur le catalogue d'effets ni sur les molettes de
+#  vitesse et d'ecart. Les reglages n'avaient pas bouge -- c'est l'affichage qui
+#  etait mort. On laisse donc le viseur ETEINT : CUBE_3D ne cuit que lorsqu'on
+#  le regarde vraiment, par real_Move ou en ouvrant son viseur a la main.
+sortie.viewer = False
 
 print('=' * 66)
 print('CUBE_3D installe')
