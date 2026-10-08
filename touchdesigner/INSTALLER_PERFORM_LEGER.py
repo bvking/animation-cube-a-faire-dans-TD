@@ -91,7 +91,7 @@ if 'Sortir' not in deja:
 # --- la vue : CUBE_3D/out, tout l'espace sauf la barre -----------------------
 vue = enfant(pl, 'vue', containerCOMP, 0, 0)
 vue.par.hmode, vue.par.vmode = 'fill', 'fixed'
-vue.par.h.expr = 'parent().height - 60'
+vue.par.h.expr = 'parent().height - 60 - 22'     # la barre en bas, la ligne d'etat en haut
 vue.par.y = 60
 vue.par.topfill = 'best'
 #  CHEMIN RELATIF DEPUIS 'vue' : op('x') cherche dans PERFORM_LEGER, '../' est
