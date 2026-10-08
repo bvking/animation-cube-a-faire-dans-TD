@@ -152,7 +152,7 @@ sont alors simplement pas visibles). Le Text DAT peut être supprimé après.
 - `INSTALLER_VASARELY.py` — installe l'effet Vasarely (après les deux autres ;
   son bouton se place sous « LANCER L'ANNEAU »)
 - `INSTALLER_PERFORM_LEGER.py` — le mode Perform allégé : une seule petite
-  fenêtre (le volume imprimé en 320 × 180, LANCER LE CUBE, LANCER LE CUBE
+  fenêtre de 800 × 420 (le volume imprimé en 320 × 180, LANCER LE CUBE, LANCER LE CUBE
   STATIQUE, TOUT ÉTEINDRE, RETOUR ÉDITEUR), les autres fenêtres fermées le
   temps du mode ; TouchDesigner y cuit 59 images/s au lieu de 17, l'envoi
   aux ESP32 n'est plus bridé que par le ruban (26 trames/s). Entrée par le

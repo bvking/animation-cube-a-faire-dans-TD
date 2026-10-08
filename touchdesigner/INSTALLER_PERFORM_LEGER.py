@@ -18,7 +18,7 @@
 # il ne depend d'aucune fenetre.
 #
 # CE QUE FAIT L'INSTALLEUR
-#   PERFORM_LEGER            containerCOMP 640 x 420 : la vue (CUBE_3D/out),
+#   PERFORM_LEGER            containerCOMP 800 x 420 : la vue (CUBE_3D/out),
 #                            une ligne d'etat (images/s reelles, maitre,
 #                            source des angles, carte, envoi) et quatre
 #                            boutons : LANCER LE CUBE, LANCER LE CUBE
@@ -65,7 +65,7 @@ ACCENT = (0.08, 0.68, 0.92)
 TEXTE = (0.91, 0.93, 0.97)
 
 pl = enfant(scale, 'PERFORM_LEGER', containerCOMP, 2400, -10450)
-pl.par.w, pl.par.h = 640, 420
+pl.par.w, pl.par.h = 800, 420      # 800 : quatre etiquettes de 23 caracteres a 9 pt
 pl.par.bgcolorr, pl.par.bgcolorg, pl.par.bgcolorb = FOND
 pl.par.bgalpha = 1
 pl.comment = ("Le mode Perform allege : une seule petite fenetre, le volume imprime "
@@ -94,7 +94,9 @@ vue.par.hmode, vue.par.vmode = 'fill', 'fixed'
 vue.par.h.expr = 'parent().height - 60'
 vue.par.y = 60
 vue.par.topfill = 'best'
-vue.par.top.expr = "op('../../CUBE_3D/out') if op('../../CUBE_3D/out') else None"
+#  CHEMIN RELATIF DEPUIS 'vue' : op('x') cherche dans PERFORM_LEGER, '../' est
+#  /project1/scale. Deux '../' pointaient sur /project1 : vue noire, sans erreur.
+vue.par.top.expr = "op('../CUBE_3D/out') if op('../CUBE_3D/out') else None"
 vue.par.bgcolorr, vue.par.bgcolorg, vue.par.bgcolorb = 0.0, 0.0, 0.0
 vue.par.bgalpha = 1
 vue.comment = "Ce que les pales impriment, en 320 x 180 pendant le mode."
@@ -311,7 +313,7 @@ fen = enfant(scale, 'FENETRE_PERFORM_LEGER', windowCOMP, 2400, -10600)
 fen.par.winop = pl
 fen.par.title = 'Perform allege -- envoi aux ESP32'
 fen.par.size = 'custom'
-fen.par.winw, fen.par.winh = 640, 420
+fen.par.winw, fen.par.winh = 800, 420
 fen.par.borders = True
 fen.comment = "La seule fenetre du mode Perform allege."
 
