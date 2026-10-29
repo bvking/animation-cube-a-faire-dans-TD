@@ -1,0 +1,370 @@
+AVANCÉES DU JEUDI 29 OCTOBRE 2026
+La vitesse de rotation jusqu'à 5 tours/s : de la relecture à l'essai qui marche
+
+Écrit le 29 octobre 2026 entre 18 h 20 et 19 h 10, à la demande de Benjamin : « fais un
+fichier texte dans lequel tu mets toutes les avancées d'aujourd'hui, commit et pousse ».
+Trois relecteurs indépendants ont vérifié chaque affirmation contre le code, le journal
+de TD, le journal de l'IDE Arduino et git. Le journal détaillé est dans le dépôt
+panneaux-led-rotatifs : commentaires/COMMENT_251 (le 28 au soir et le 29 jusqu'à
+16 h 30) et commentaires/COMMENT_252 (la fin d'après-midi).
+
+
+EN BREF
+
+- Le curseur VITESSE DE ROTATION (page CHOREGRAPHIE de MOTEURS_TEENSY) va maintenant
+  jusqu'à 5,00 tour/s. De 18 h 06 à 18 h 12, Benjamin a armé et monté par crans jusqu'à
+  2,60. À 18 h 14 : « Ça fonctionne ».
+- La carte Teensy porte le firmware final du 29 octobre. Benjamin l'a téléversé à 17 h 09,
+  et la carte annonce vmax_hard=16480, ce que seul ce firmware fait.
+- De 17 h 09 à 17 h 50, la porte est restée fermée. Le moniteur série de l'IDE Arduino
+  prenait les lignes de la carte au pilote, qui ne l'entendait plus. Depuis 17 h 50 min
+  36 s, le pilote entend la carte sans interruption.
+- ATTENTION : pendant ce temps, Benjamin a armé deux fois alors que le pilote était sourd,
+  et les crans sont montés quand même jusqu'à 2,30 (sections 1 et 7). Règle : ne pas
+  armer quand « Carte » dit MUETTE.
+- Sous 2,30, le pilote envoie les mêmes trames qu'avant, au bit près, et la carte fait les
+  mêmes impulsions. Deux choses changent : si les trames s'arrêtent au-dessus de
+  0,3 tour/s, la lame ne revient plus en arrière (F12) ; si personne ne lit le port, la
+  carte n'attend plus (F13).
+- Au-dessus de 2,37 tour/s, on n'a que le compte de la carte pendant l'essai de 18 h 08 -
+  18 h 10 : 2,78 tour/s au plus, en moyenne sur les dix lames. Ce compte ne dit pas si les
+  axes ont suivi, ni si les moteurs étaient sous tension. Les essais par paliers restent à
+  faire (section 8).
+- Tout est commité et poussé sur GitHub, y compris le projet .toe que TD a enregistré à
+  16 h 48 (section 9).
+
+
+LES MOTS DU PROJET UTILISÉS ICI
+
+- le pilote : le programme Python qui calcule les consignes et les envoie à la Teensy,
+  40 trames par seconde. Il tourne dans un processus à part de TouchDesigner (case
+  Fildedie cochée), et il doit être seul à tenir le port USB de la carte.
+- un cran : la marche de 0,10 tour/s par laquelle le pilote monte vers la vitesse
+  demandée. Normalement, il passe au cran suivant quand la carte suit le cran actuel à
+  0,05 près depuis 1,5 s, ou au bout de 20 s. Pilote sourd, les crans montent quand même
+  (section 7).
+- ABC[20] : le plafond de vitesse que chaque trame donne à la carte, en pas par seconde.
+  3200 pas font un tour : 7840 pas/s = 2,45 tour/s, et 16480 pas/s = 5,15 tour/s.
+- la porte : la règle du pilote « pas plus de 2,30 tour/s tant que la carte n'a pas
+  annoncé vmax_hard=16480 ». Seul le firmware final fait cette annonce. C'est aussi le
+  seul qui ait F12 et F13. Qu'il tienne vraiment 5,00 reste à mesurer.
+- Chvmes, Chmot, Carte : des lignes d'état de MOTEURS_TEENSY.
+  - Chvmes donne la vitesse mesurée, le cran envoyé et la cible. Elle commence par
+    « PORTE 2,30 | » tant que la porte est fermée.
+  - Chmot donne le dernier message de la page Chorégraphie (PORTE, ARMER REFUSÉ, ARRÊT,
+    FIN…). Les messages des gardes n'arrivent pas dans TD quand le pilote tourne dans
+    son processus.
+  - Carte (page Moteurs) dit « parle » quand le pilote reçoit les lignes de la carte, et
+    « MUETTE depuis N s » quand il ne les reçoit plus.
+- F11, F12, F13 : des fonctions du firmware, décrites à la section 3.
+
+
+1. LA JOURNÉE, HEURE PAR HEURE
+
+  la veille, 19 h 54  Benjamin demande que la vitesse maximale soit 5 tours/s. Le même
+                      soir : analyse du curseur, les sept limites levées ensemble,
+                      firmware modifié (VMAX_HARD 16480, F11), première relecture
+                      commencée. Pause demandée par Benjamin vers 21 h 50.
+  13 h 20             La carte est débranchée puis rebranchée. Le pilote se met en
+                      veille (« carte absente »).
+  13 h 24             Reprise (« continue »).
+  13 h 42             Benjamin téléverse la version du 28 au soir, vraisemblablement
+                      telle quelle.
+  14 h 13             Il la téléverse de nouveau, après avoir passé dans l'IDE le
+                      moteur 2 sur les broches 10 (DIR) et 9 (STEP).
+  13 h 24 - 14 h 40   Corrections issues de la première relecture, dans le pilote
+                      (section 2, a à d) et dans le firmware (section 3).
+  14 h 40 - 16 h 08   Relecture finale : quatre relecteurs, chacun suivi d'un
+                      vérificateur chargé de le contredire. 30 constats, tous confirmés,
+                      dont un bloquant : le « cliquet » (section 2, e).
+  14 h 45             Benjamin confirme les broches : « Oui, 10/9 voulues ».
+  14 h 50             Benjamin ferme TD.
+  14 h 54             Je le rouvre (Benjamin : « sois autonome, démarre TD toi-même, fais
+                      les tests »).
+  16 h 21             Le passage à 5 tours/s est appliqué dans TD, moteurs désarmés et
+                      lames arrêtées, par remplacement des DAT. L'installeur n'est pas
+                      rejoué : Margecouple 0,40 et Accelmax 304 sont gardés.
+  16 h 25             Projet enregistré sous
+                      SAISON_9_CUBE_ANNEAU_VASARELY.11_CUBE_vitesse_5tr_sec.toe.
+  16 h 28 - 16 h 29   Commits et pushes des deux dépôts (section 9).
+  16 h 48             Benjamin ferme TD, qui réenregistre le projet (.toe et .2.toe,
+                      identiques).
+  16 h 54 - 16 h 55   Incident dans l'IDE Arduino : le croquis est vidé (section 5).
+  17 h 00             Le croquis est restauré depuis la copie du dépôt.
+  17 h 09             Benjamin téléverse le firmware final. Le moniteur série de l'IDE,
+                      ouvert depuis 17 h 08, est relancé aussitôt après.
+  17 h 10             Benjamin rouvre TD. Carte dit « MUETTE ».
+  17 h 11 - 17 h 13   Il arme à 17 h 11 min 44 s. Les crans montent jusqu'à 2,30 en
+                      51 s, alors que le pilote n'entend pas la carte. ARMER est décoché
+                      à 17 h 13 min 19 s, au cran 2,3.
+  17 h 14             Désarmé, le curseur posé à 3,79 revient à 2,30 en une demi-seconde.
+  17 h 15 - 17 h 33   TD est fermé et rouvert deux fois (17 h 18, 17 h 27), et ARMER est
+                      coché et décoché une vingtaine de fois. La carte quitte l'USB puis
+                      revient trois fois (17 h 30, 17 h 31, 17 h 32) : Chmot dit « carte
+                      absente : pilote en veille », puis « carte rebranchée ».
+  17 h 35             Quatrième ouverture de TD (nouveau processus du pilote). Armé de
+                      17 h 35 min 47 s à 17 h 38 min 57 s : les crans s'arrêtent à 2,30,
+                      et le curseur posé à 2,4 puis 2,5 revient à 2,3. ARMER est décoché
+                      au cran 2,0.
+  17 h 40             Benjamin : « quand je veux choisir au-dessus de 2.3, le curseur
+                      revient à 2.3 ».
+  17 h 40 - 17 h 50   Diagnostic : le moniteur série de l'IDE prenait les lignes de la
+                      carte au pilote (section 6).
+  17 h 50 min 36 s    Le pilote entend de nouveau la carte, sans interruption (journal de
+                      TD). Vraisemblablement, l'onglet du moniteur série vient d'être
+                      fermé ; le journal de l'IDE ne le dit pas.
+  18 h 06             L'IDE est quitté.
+  18 h 06 - 18 h 12   Benjamin arme (18 h 06 min 45 s) et monte par crans jusqu'à une
+                      cible de 2,60 : cran 2,4 à 18 h 08 min 38 s, 2,5 à 18 h 08 min 54 s,
+                      2,6 à 18 h 09 min 49 s. Au compte de la carte, les dix lames sont
+                      au-dessus de 2,37 de 18 h 08 min 34 s à 18 h 10 min 45 s, avec
+                      2,78 tour/s au plus en moyenne à 18 h 10. Puis retour à 0
+                      (cible 0 à 18 h 11 min 48 s).
+  18 h 14             Benjamin : « Ça fonctionne ».
+  18 h 15             Vérifié dans TD : Carte dit « parle », Chvmes ne commence plus par
+                      « PORTE 2,30 », seul le pilote tient le port.
+
+
+2. CE QUI A CHANGÉ DANS LE PILOTE AUJOURD'HUI
+   (choregraphie_reelle/INSTALLER_CONTAINER_TEENSY.py, dépôt panneaux-led-rotatifs)
+
+  Rappel du 28 au soir : le curseur et Vitessemax passent à 5,00. Au-dessus de 2,30, la
+  loi d'accélération est TENUE à sa valeur de 2,30 (32 pas/s²) : 0 → 5,00 en 8 min
+  environ, et l'arrêt depuis 5,00 en 6 min environ. GARDE 3 et la loi bougent avec le
+  curseur, et les sept limites sont levées ensemble.
+
+  a) LE PLAFOND ABC[20] GLISSE AVEC LES LAMES. Il vaut 7840 (2,45 tour/s), comme avant,
+     tant que les lames tournent sous 2,30. Au-dessus, il vaut la lame la plus rapide +
+     0,15 tour/s, par marches de 160 pas/s (0,05 tour/s), jusqu'à 16480.
+     Pourquoi : envoyé à 16480 en permanence, il ne retenait plus rien sous 2,30. Une
+     lame à 1,00 aurait pu être rattrapée jusqu'à 3,7 tour/s au lieu d'être arrêtée à
+     2,45.
+  b) LA PORTE. La rotation ne dépasse 2,30 que si la carte a annoncé vmax_hard=16480 sur
+     sa ligne <BOUCLE ...>. Le pilote retient l'annonce jusqu'à ce qu'il reçoive un READY
+     (la carte a redémarré) après avoir envoyé au moins une trame, ou jusqu'à la relance
+     de son processus. Une porte qui se ferme ne coupe rien : les crans redescendent à
+     l'accélération permise.
+  c) GARDE 3 (le plus grand pas de consigne entre deux trames) suit la rotation
+     commune : max(2,5 ; rotation + 0,20) tour/s, borné par Vitesseconsigne 5,20. Elle
+     est identique à l'ancienne jusqu'à 2,30.
+  d) Le témoin Chvmax lit le plafond réellement envoyé et dit HORS MESURE au-dessus de
+     2,37 tour/s.
+  e) LE CLIQUET, trouvé par la relecture finale (bloquant). Le plancher du plafond était
+     calculé sur ce que fait la carte, rattrapage compris. Il remontait de 0,15 chaque
+     fois que la carte touchait son plafond, et sous 2,30 la butée de 7840 disparaissait :
+     3,31 tour/s simulés pour une cible de 2,30.
+     Corrigé : le plancher se calcule sur ce que le PILOTE commande. Rejoué avec les
+     scénarios du relecteur, les trames sont identiques au bit à l'ancien code sous 2,30
+     (5140, 7929, 48 646 et 15 897 trames selon le scénario).
+  f) UN PLAFOND QUI BAISSE NE COUPE PLUS LA ROTATION : elle redescend à l'accélération
+     permise. Essai à 4,00 en baissant Plafondfigure à 6976 : avant, 1,82 tour/s perdus
+     en une image ; après, 0,0003 au plus.
+  g) ARMER EST REFUSÉ TANT QU'UNE LAME TOURNE, avec le message « ARMER REFUSÉ … » dans
+     Chmot. Réarmer pendant le freinage d'un désarmement faisait repartir les lames en
+     arrière. Ce refus ne voit rien quand le pilote est sourd (section 7).
+  h) La porte se voit dans TD : Chvmes commence par « PORTE 2,30 | » et Chmot dit
+     pourquoi.
+  i) Vitessemax 5,00 n'est plus lu tel quel dans la marge des figures ni dans la garde
+     du mouvement. Ces deux calculs lisent min(Vitessemax ; max(2,30 ; cran visé)) :
+     exactement comme avant tant que le cran ne dépasse pas 2,30, puis ils suivent le
+     cran.
+
+
+3. LE FIRMWARE FINAL
+   (motor_positions_figures_MAX_or_TD_sens_inverse_normalOrder, version du 29 octobre)
+
+  - F12, FREIN SANS RETOUR. Quand les trames s'arrêtent au-dessus de 0,3 tour/s
+    (désarmement, pilote arrêté, câble), la carte freine jusqu'à l'arrêt sans revenir en
+    arrière.
+    Au banc, à 5,00 : 52,8 tours de dépassement, puis 3 pas en arrière. Sans F12, elle
+    revenait de 52,9 tours, jusqu'à 3,63 tour/s. À 2,30 : 11,3 tours, puis 3 pas.
+  - F13, ENVOIS SANS ATTENTE. Si personne ne lit le port, la boucle ne reste plus
+    121 ms sans faire un pas : la carte saute les lignes de compte rendu qui n'ont pas
+    la place de partir. Au banc, la boucle la plus longue fait alors 84 µs à 5,00 et
+    129 µs à 2,30.
+  - F11, IMPULSIONS GROUPÉES, seulement au-dessus d'ABC[20] = 7840. En dessous, les
+    impulsions sont identiques au bit à celles du firmware du 28 à 17 h 46.
+  - vmax_hard=16480 à la fin de la ligne <BOUCLE ...>, chaque seconde : c'est ce que
+    la porte du pilote attend.
+  - PROFILE_SUBTILE garde vMax 16000 ; le moteur 2 est sur les broches 10/9.
+  - Compilé : 0 erreur, 0 avertissement, 22 992 octets de code en mémoire FLASH.
+    Bannière attendue au démarrage : <FIRMWARE ..._normalOrder -- 5 tours/s, F12 F13 --
+    29 octobre 2026>. Elle n'a pas été lue.
+  - Téléversé par Benjamin à 17 h 09 (journal de l'IDE). Ce qui prouve qu'il tourne :
+    la carte annonce vmax_hard=16480, et seul ce firmware l'écrit.
+
+
+4. VÉRIFIÉ SANS FAIRE TOURNER DE MOTEUR
+
+  - Les 38 bancs d'essai du pilote donnent les mêmes résultats avant et après, sauf les
+    contrôles qui verrouillaient exprès 7840 et 2,30, mis à jour. Attention : quatorze
+    bancs étaient déjà en échec avant, et ils le restent à l'identique (liste dans
+    COMMENT_251, section 9). « Mêmes résultats » ne veut pas dire « tout passe ».
+  - GARDE 16 : 50 contrôles, dont 14 sur le plafond glissant et la porte. Timelines :
+    182 contrôles. Journal : 52.
+  - Montée simulée (vrai pilote, carte simulée) : 5,00 atteint en 480 s. Sans l'annonce
+    de la carte, la montée s'arrête à 2,30. À 2,30, ABC[20] vaut 7840 sur les 1509
+    relevés.
+  - Dans TD, la vraie carte branchée (firmware de 14 h 13, qui n'annonce rien) : curseur
+    posé à 3,00, ramené à 2,30 par la porte. Mais le moniteur série tenait déjà le port,
+    et le pilote n'entendait presque pas la carte. L'essai montre seulement que la porte
+    reste fermée tant qu'aucune annonce n'est entendue. Aucune erreur dans TIMELINES,
+    JOURNAL et CUBE_3D.
+  - Le juge du timecode était « en défaut » avant comme après le changement : TD
+    tournait dans l'éditeur, avec Chrome devant par moments. Pas de dégradation :
+    9,7 à 11,6 images/s avant, 12,4 à 16,1 après.
+
+
+5. L'INCIDENT DU CROQUIS DANS L'IDE ARDUINO (16 h 54 - 17 h 00)
+
+  - Dans l'éditeur de l'IDE, le nom « motor_positions_figures_MAX_or_TD_sens_inverse_
+    normalOrder » (58 caractères) a remplacé tout le texte du croquis. C'est
+    probablement un collage pendant que tout le texte était sélectionné. L'IDE
+    enregistre tout seul.
+  - À 16 h 54 min 54 s, « Enregistrer sous » a créé le dossier ..._normalOrder_5trS :
+    son .ino ne contient que ce nom. À 16 h 55 min 27 s, le fichier d'origine a été
+    vidé (0 octet).
+  - À 17 h 00, j'ai restauré le croquis d'origine depuis la copie du dépôt
+    (teensy/motor_positions_figures_MAX_or_TD_sens_inverse_normalOrder/ : 1400 lignes,
+    identique au commit 8327822). C'est cette version que Benjamin a téléversée à 17 h 09.
+  - Le dossier ~/Documents/Arduino/hardware/WiFi_Kit_series/..._normalOrder_5trS est
+    toujours là. Il ne sert à rien : à mettre à la corbeille.
+
+
+6. POURQUOI LE CURSEUR REVENAIT À 2,30 (17 h 09 - 17 h 50)
+
+  - Le symptôme : au-dessus de 2,3, le curseur revenait à 2,3.
+  - Ce que montrait TD :
+    - Chvmes : « PORTE 2,30 | … » ;
+    - Chmot : « PORTE 2,30 : la carte n'a pas annoncé vmax_hard=16480 (firmware d'avant
+      le 29 oct.) … » ;
+    - et surtout Carte : « MUETTE depuis 143 s ».
+  - La cause : deux programmes lisaient le port de la carte en même temps. L'un était
+    le pilote. L'autre était le moniteur série de l'IDE (teensy-monitor), ouvert à
+    17 h 08 et relancé par l'IDE juste après le téléversement de 17 h 09.
+    Le moniteur attend les données en permanence et prenait presque toutes les lignes.
+    Le pilote n'en attrapait qu'une de temps en temps, et jamais une ligne
+    <BOUCLE ... vmax_hard=16480> entière. La porte restait donc fermée.
+  - Pourquoi le curseur lui-même revenait :
+    - armé, il montre le cran en cours, et la porte arrêtait les crans à 2,30. C'est ce
+      que Benjamin a vu à 17 h 38, quand 2,4 et 2,5 revenaient à 2,3 ;
+    - désarmé, le pilote renvoie au curseur la cible bornée à 2,30. C'est ce qui s'est
+      passé à 17 h 14.
+  - Ni le firmware ni le code n'y étaient pour rien. La carte écrit bien
+    « vmax_hard=16480> », et le pilote sait lire cette ligne.
+  - J'ai voulu arrêter le moniteur moi-même. Le mode automatique de Claude Code l'a
+    refusé, parce que c'est un programme de Benjamin.
+  - Depuis 17 h 50 min 36 s, le pilote entend la carte sans interruption. La porte s'est
+    ouverte dès la ligne <BOUCLE> suivante (la carte l'envoie chaque seconde). Preuve
+    qu'elle était ouverte : à 18 h 08 min 38 s, les crans passent 2,30. L'IDE a été
+    quitté à 18 h 06.
+  - Un défaut d'affichage est apparu en route. Chmot affiche encore l'ancien message
+    « PORTE 2,30 … » alors que la porte est ouverte : il n'est pas effacé à l'ouverture.
+    Ce message accuse aussi le « firmware d'avant » alors que le pilote n'entendait
+    simplement plus la carte. C'est Chvmes qui fait foi.
+
+
+7. LES RÈGLES À RETENIR
+
+  1) UN SEUL PROGRAMME SUR LE PORT DE LA TEENSY. L'IDE Arduino rouvre son moniteur série
+     à chaque nouvelle fenêtre, tant que l'onglet « Moniteur série » fait partie de sa
+     disposition. Il le relance aussi après un téléversement s'il était ouvert avant,
+     comme aux trois téléversements du jour.
+     Avant de travailler dans TD, ferme l'onglet « Moniteur série » ou quitte l'IDE, et
+     revérifie après chaque téléversement.
+  2) N'ARME PAS QUAND « Carte » DIT « MUETTE ». ARMER passe quand même. Le pilote, qui
+     n'entend pas la carte, monte ses crans toutes les 1,5 s environ sans attendre
+     qu'elle suive. La carte, elle, reçoit les trames et tourne.
+     Aucune garde n'a désarmé à 17 h 11 ni à 17 h 35, et le refus d'ARMER « tant qu'une
+     lame tourne » ne voit rien.
+  3) Pour voir qui tient le port, dans un terminal : lsof /dev/cu.usbmodem*. Sous la
+     ligne d'en-tête (COMMAND PID …), il ne doit y avoir qu'une ligne : Python, le
+     pilote. Une ligne « teensy-mo » est le moniteur série de l'IDE.
+  4) La copie du firmware qui fait foi est celle du dépôt (teensy/..._normalOrder/). Ne
+     rien taper dans l'éditeur de l'IDE ouvert sur le croquis : il enregistre tout seul.
+  5) Fermer TD ne libère pas le port, car le processus du pilote lui survit. Pour
+     téléverser : décocher Fildedie, puis désactiver le serialDAT MOTEURS_TEENSY/lien.
+     Après le téléversement, les remettre comme le dit VITESSE_5_TOURS_SECONDE.md
+     (étape 3). Le processus du pilote relancé relit alors l'annonce du nouveau
+     firmware.
+  6) Ne jamais rejouer INSTALLER_CONTAINER_TEENSY : il reposerait Margecouple 0,80 et
+     Accelmax 800. Remplacer le DAT pilote relance aussitôt son processus : lames
+     arrêtées d'abord.
+  7) Pour s'arrêter : ARRÊT ou FIN (environ 6 min depuis 5,00). Ne jamais DÉSARMER en
+     rotation rapide. Aujourd'hui, ARMER a été décoché au cran 2,3 (17 h 13) et au cran
+     2,0 (17 h 38) : si les moteurs étaient sous tension, la carte a freiné seule.
+
+
+8. CE QUI RESTE À FAIRE
+
+  - AFFICHER LA LIGNE <BOUCLE it/s= ...> DANS TD avant les paliers hors tension. Le
+    pilote la reçoit, mais ne la transmet pas à TD, et le journal ne l'enregistre pas.
+    Pour la lire aujourd'hui, il faudrait rouvrir le moniteur série, qui rend le pilote
+    sourd. C'est à faire lames arrêtées, puisque remplacer le DAT pilote relance son
+    processus.
+  - REFUSER ARMER QUAND LE PILOTE N'ENTEND PAS LA CARTE. C'est une proposition, pas
+    encore faite : aujourd'hui rien ne l'empêche (section 7, règle 2).
+  - Rétablir et vérifier le repère du haut. Le téléversement de 17 h 09 a fait faire aux
+    lames leur tour de démarrage, et la carte a quitté l'USB trois fois de 17 h 30 à
+    17 h 32. Sans ce repère, le critère de l'essai sous tension (« la lame revient à son
+    repère ») ne vaut rien.
+  - Comprendre pourquoi la carte a quitté l'USB trois fois, sans téléversement : câble ?
+    alimentation ?
+  - Les essais par paliers :
+    - moteurs hors tension : 2,5 / 3 / 4 / 5 tour/s, en lisant <BOUCLE it/s=...>. La
+      boucle doit faire nettement plus de 16 480 tours par seconde à 5,00 ;
+    - puis sous tension : une seule lame, un palier par « go », un nombre entier de
+      tours, et à l'arrêt la lame doit revenir à son repère.
+    L'essai de 18 h 06 est déjà monté à 2,5 - 2,6, sans lire <BOUCLE>. À 5,00, le bout
+    d'une lame va à environ 90 km/h, et la lame porte environ 42 J : personne dans le
+    plan des lames.
+  - Une amélioration de Chmot, pas faite : dire « le pilote n'entend pas la carte :
+    moniteur série de l'IDE ouvert ? » quand la carte est muette, et « PORTE OUVERTE »
+    quand l'annonce arrive.
+  - Trois décisions te reviennent :
+    - Un désarmement en rotation doit-il devenir un ARRÊT ?
+    - La carte doit-elle dater les trames à leur arrivée ? Aujourd'hui, elle les cale sur
+      une grille de 10 ms (F8). Au banc, à 5,00, elle court alors jusqu'à environ 3 tours
+      devant la consigne. Dater à l'arrivée corrige cela au banc, mais change un
+      comportement validé sous 2,30.
+    - L'arrêt d'urgence ne freine pas en mode figure : faut-il le changer ?
+  - Le dossier ..._normalOrder_5trS est à mettre à la corbeille.
+
+
+9. LES COMMITS DU JOUR
+
+  Dépôt bvking/panneaux-led-rotatifs, branche moins_de_script_Py :
+  - 8327822 (16 h 28) : 5 tours/s depuis TouchDesigner. Le pilote, les timelines, le
+    journal, les bancs d'essai, le firmware final et la version de 14 h 13, COMMENT_251
+    et CLAUDE.md.
+  - le commit du soir : le firmware final est noté comme téléversé (CLAUDE.md,
+    teensy/LISEZ_MOI.txt et les CHANGEMENTS.txt du firmware), et COMMENT_252 raconte la
+    fin d'après-midi.
+
+  Dépôt bvking/animation-cube-a-faire-dans-TD, branche main :
+  - 0d5ac20 (16 h 29) : le projet ...vitesse_5tr_sec.toe, CUBE_3D (l'arc ne s'imprime
+    plus à l'envers à 5 tour/s) et VITESSE_5_TOURS_SECONDE.md.
+  - le commit du soir : ce fichier, VITESSE_5_TOURS_SECONDE.md mis à jour, et le projet
+    ...vitesse_5tr_sec.toe tel que TD l'a enregistré à 16 h 48, celui qui a tourné à
+    18 h 08.
+
+
+10. OÙ SONT LES FICHIERS
+
+  - Le pilote et la page Chorégraphie :
+    Ameliorer controle panneaux rotation TD/choregraphie_reelle/INSTALLER_CONTAINER_TEENSY.py
+    (et pilote_en_fil.py).
+  - Le firmware final, celui qui est dans la carte depuis 17 h 09 :
+    ~/Documents/Arduino/hardware/WiFi_Kit_series/motor_positions_figures_MAX_or_TD_sens_inverse_normalOrder/
+    Copie de référence : teensy/motor_positions_figures_MAX_or_TD_sens_inverse_normalOrder/
+    dans le dépôt panneaux-led-rotatifs.
+  - La version de 14 h 13, qui n'est plus dans la carte :
+    teensy/motor_positions_figures_MAX_or_TD_sens_inverse_normalOrder_flashe_29oct_14h13/
+  - Le journal de TD (tous les événements, avec l'heure) :
+    Ameliorer controle panneaux rotation TD/choregraphie_reelle/enregistrements/journal_td_20260917_001538.jsonl
+  - La mesure de l'essai de 18 h 06 (ligne MESURE de TIMELINES) :
+    ~/Documents/choregraphie_reelle/enregistrements/timeline_mesure_20261029_180645.csv
+  - Le récapitulatif du curseur : VITESSE_5_TOURS_SECONDE.md, dans ce dépôt.
+  - Le projet TD : SAISON_9_CUBE_ANNEAU_VASARELY.11_CUBE_vitesse_5tr_sec.toe, dans ce
+    dépôt. Les copies numérotées que TD enregistre (.1.toe, .2.toe…) sont ignorées par
+    git.

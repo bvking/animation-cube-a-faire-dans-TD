@@ -1,5 +1,13 @@
 # Vitesse de rotation : jusqu'à 5 tours/s
 
+> **Mise à jour du 29 octobre au soir.** Benjamin a téléversé le firmware final à
+> 17 h 09. La porte est restée fermée jusqu'à 17 h 50 : le moniteur série de l'IDE
+> prenait les lignes de la carte au pilote. Depuis 17 h 50 min 36 s, le pilote entend
+> la carte. De 18 h 06 à 18 h 12, Benjamin a monté par crans jusqu'à 2,60 (2,78 tour/s
+> au plus, au compte de la carte) ; à 18 h 14 : « Ça fonctionne ». **N'arme pas quand
+> « Carte » dit MUETTE** : les crans montent quand même. Toute la journée :
+> [AVANCEES_29_OCTOBRE_2026.txt](AVANCEES_29_OCTOBRE_2026.txt).
+
 28 octobre 2026 (19 h 54 – 21 h 50) et 29 octobre (13 h 24 – 16 h). Demande de
 Benjamin : « Analyse comment fonctionne le curseur de "VITESSE DE ROTATION" dans
 l'onglet CHOREGRAPHIE dans le container MOTEURS_TEENSY. Fais en sorte que la
@@ -26,11 +34,12 @@ dépôt : `Ameliorer controle panneaux rotation TD/commentaires/COMMENT_251_5_TO
   arrêtées, sans rejouer l'installeur (tes réglages Margecouple 0,40 et Accelmax
   304 sont gardés). Projet enregistré sous
   `SAISON_9_CUBE_ANNEAU_VASARELY.11_CUBE_vitesse_5tr_sec.toe`.
-- Le **programme de la Teensy** `..._normalOrder` est prêt (version finale du
-  29 octobre). Il **n'est pas encore téléversé**. Depuis 14 h 13 aujourd'hui, la
-  carte porte la version du 28, avec le moteur 2 sur les broches 10/9.
-- **Rien n'a été mesuré au-dessus de 2,37 tour/s.** Le logiciel autorise 5 tour/s ;
-  seul un essai dira si les moteurs suivent.
+- Le **programme de la Teensy** `..._normalOrder` (version finale du 29 octobre)
+  **est téléversé depuis 17 h 09**, par Benjamin. De 14 h 13 à 17 h 09, la carte
+  portait la version du 28, avec le moteur 2 sur les broches 10/9.
+- **Au-dessus de 2,37 tour/s, on n'a que le compte de la carte**, pendant l'essai du
+  29 de 18 h 08 à 18 h 10 (2,78 au plus) : il ne dit pas si les axes ont suivi. Le
+  logiciel autorise 5 tour/s ; seul un essai mesuré dira si les moteurs suivent.
 
 ## Comment fonctionne le curseur
 
@@ -116,6 +125,14 @@ permise au lieu d'être coupée d'un coup.
 
 ## Ce que tu dois faire maintenant, dans l'ordre
 
+*29 octobre au soir : étape 2 faite (téléversement à 17 h 09 du croquis restauré à
+17 h 00, après qu'il eut été vidé dans l'IDE). Étape 0 faite après coup : le pilote
+entend la carte depuis 17 h 50, et l'IDE a été quitté à 18 h 06. Étape 3 en partie :
+la bannière n'a pas été lue, mais la porte s'est ouverte (la carte annonce
+vmax_hard=16480). Le repère du haut reste à vérifier. Avant les étapes 4 et 5, il faut
+afficher la ligne `<BOUCLE>` dans TD : elle n'y arrive pas encore (voir
+AVANCEES_29_OCTOBRE_2026.txt, section 8).*
+
 0. **Fermer le moniteur série de l'IDE Arduino.** Il tient le port de la Teensy en
    même temps que le pilote (règle du dépôt : un seul programme à la fois).
 1. **Recharger le croquis dans l'IDE avant toute sauvegarde.** L'éditeur de l'IDE
@@ -157,18 +174,18 @@ permise au lieu d'être coupée d'un coup.
 - **Ne jamais DÉSARMER en rotation rapide.** Plus aucune consigne ne part, et la
   Teensy freine seule, à 800 pas/s² : 25 fois l'accélération tenue. À 5,00, la lame
   dépasse sa cible d'une cinquantaine de tours, avec un décrochage probable. Avec
-  F12 elle ne revient plus ; sans F12 (le firmware actuellement dans la carte),
-  elle revient jusqu'à près de 3,6 tour/s. Même effet si une garde désarme ou si les
+  F12 (le firmware final, dans la carte depuis le 29 à 17 h 09), elle ne revient
+  plus ; sans F12 (la version de 14 h 13), elle revenait jusqu'à près de 3,6 tour/s. Même effet si une garde désarme ou si les
   trames s'arrêtent. **Pour s'arrêter : ARRÊT ou FIN.**
 - **Ne pas relancer l'installeur, ni rouvrir TD, lames en rotation** : le processus
   du pilote est relancé aussitôt, sans trame de gel.
 - **ARMER est refusé tant qu'une lame tourne** (Chmot : « ARMER REFUSÉ … ») : après
   un désarmement à 5,00, la carte freine seule ~21 s, et réarmer pendant ce
   freinage faisait repartir les lames en arrière.
-- **La carte porte aujourd'hui la version du 28** (téléversée à 14 h 13) : F11 y
-  agit à toutes les vitesses, même sous 2,45 (train d'impulsions jamais mesuré), et
-  ni F12 ni F13. Avec TD, la porte la garde à 2,30. Téléverser la version finale
-  remet sous 2,45 exactement les impulsions d'avant.
+- **De 14 h 13 à 17 h 09, la carte portait la version du 28** : F11 y agissait à
+  toutes les vitesses, même sous 2,45 (train d'impulsions jamais mesuré), sans F12
+  ni F13 ; la porte la gardait à 2,30. Depuis 17 h 09, la version finale remet sous
+  2,45 exactement les impulsions d'avant.
 - **La marge au-dessus de 5,00 est petite** (0,15 tour/s, 3 %) : à 5,00, il ne
   reste presque rien pour les figures (hélices, rangs), et la rotation leur cède.
 - **À décider par toi** : faut-il qu'un désarmement en rotation devienne un ARRÊT ?
@@ -185,8 +202,8 @@ permise au lieu d'être coupée d'un coup.
 |---|---|
 | Le pilote et la page Chorégraphie | `Ameliorer controle panneaux rotation TD/choregraphie_reelle/INSTALLER_CONTAINER_TEENSY.py` (et `pilote_en_fil.py`) |
 | Timelines / journal | `AgencementdesLumieres/INSTALLER_TIMELINES.py`, `choregraphie_reelle/INSTALLER_JOURNAL_EVENEMENTS.py` |
-| Le firmware final | `~/Documents/Arduino/hardware/WiFi_Kit_series/motor_positions_figures_MAX_or_TD_sens_inverse_normalOrder/` ; copie dans `teensy/motor_positions_figures_MAX_or_TD_sens_inverse_normalOrder/` du dépôt panneaux |
-| Ce que porte la carte depuis le 29 oct. 14 h 13 | `teensy/motor_positions_figures_MAX_or_TD_sens_inverse_normalOrder_flashe_29oct_14h13/` du dépôt panneaux |
+| Le firmware final, dans la carte depuis le 29 oct. 17 h 09 | `~/Documents/Arduino/hardware/WiFi_Kit_series/motor_positions_figures_MAX_or_TD_sens_inverse_normalOrder/` ; copie dans `teensy/motor_positions_figures_MAX_or_TD_sens_inverse_normalOrder/` du dépôt panneaux |
+| Ce que la carte a porté le 29 oct. de 14 h 13 à 17 h 09 | `teensy/motor_positions_figures_MAX_or_TD_sens_inverse_normalOrder_flashe_29oct_14h13/` du dépôt panneaux |
 | Le firmware du 28 oct. 17 h 46 | `teensy/motor_positions_figures_MAX_or_TD_sens_inverse/` du dépôt panneaux |
 | CUBE_3D | `touchdesigner/INSTALLER_CUBE_3D.py` (ce dépôt) |
 | Le projet TD | `SAISON_9_CUBE_ANNEAU_VASARELY.11_CUBE_vitesse_5tr_sec.toe` (ce dépôt) |
@@ -210,7 +227,9 @@ permise au lieu d'être coupée d'un coup.
   des trames **identiques au bit** à l'ancien code sous 2,30 (console en essai haut,
   TD 0 → 2,30, figures à 1,00 / 1,85 / 2,20 / 2,30, rattrapage de 14,7 tours).
 - Dans TD, sans moteur : curseur posé à 3,00 → ramené à 2,30 par la porte, et le
-  message arrive dans Chmot ; aucune erreur dans TIMELINES, JOURNAL, CUBE_3D.
+  message arrive dans Chmot ; aucune erreur dans TIMELINES, JOURNAL, CUBE_3D. Le
+  moniteur série tenait déjà le port (pilote « MUETTE ») : l'essai montre seulement
+  que la porte reste fermée tant qu'aucune annonce n'est entendue.
 - Le juge du timecode : « en défaut » avant comme après le changement (TD dans
   l'éditeur à 10-16 images/s, Chrome au premier plan par moments) ; pas de
   dégradation : 9,7-11,6 images/s avant, 12,4-16,1 après.
