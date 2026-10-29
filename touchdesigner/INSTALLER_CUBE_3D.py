@@ -232,9 +232,19 @@ void main() {
 	ivec2 p = ivec2(gl_FragCoord.xy);
 	if (p.y >= RANGEES * H) {
 		// la ligne memoire : l'angle courant de chaque lame, pour l'image suivante
+		// (r), et LE SENS DU DERNIER PAS LISIBLE (g, +1 / -1, 0 inconnu). 28 oct. :
+		// a 5 tour/s, une position Teensy toutes les 100 ms fait 180 deg, et
+		// replie180 ne sait plus dans quel sens la lame est passee. Le sens se
+		// retient sur les pas de moins de 150 deg, ceux de la montee.
 		if (p.x < NB) {
 			float a = texelFetch(sTD2DInputs[2], ivec2(p.x, 0), 0).r;
-			fragColor = TDOutputSwizzle(vec4(a, 0.0, 0.0, 1.0));
+			vec4 m0 = texelFetch(sTD2DInputs[0], p, 0);
+			float sens = m0.g;
+			if (m0.a > 0.5) {
+				float d0 = replie180(a - m0.r);
+				if (abs(d0) > 0.01 && abs(d0) < 150.0) sens = sign(d0);
+			}
+			fragColor = TDOutputSwizzle(vec4(a, sens, 0.0, 1.0));
 		} else {
 			fragColor = TDOutputSwizzle(vec4(0.0));
 		}
@@ -248,6 +258,9 @@ void main() {
 	float a1 = texelFetch(sTD2DInputs[2], ivec2(s, 0), 0).r;
 	float a0 = (mem.a > 0.5) ? mem.r : a1;
 	float da = replie180(a1 - a0);
+	// (28 oct.) PRES D'UN DEMI-TOUR, LE SENS RETENU TRANCHE : sans lui, a 5 tour/s
+	// l'arc s'imprimait A REBOURS (-180 pour +180). Sous 150 deg, rien ne change.
+	if (abs(da) > 150.0 && mem.g != 0.0 && sign(da) != mem.g) da -= 360.0 * sign(da);
 	int n = clamp(int(abs(da) / max(0.1, uRegle.y)) + 1, 1, 90);
 	// le centre du voxel, en cm, dans le repere du volume (y selon la chaine LED)
 	float x = float(px) - 79.5;
