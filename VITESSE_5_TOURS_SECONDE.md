@@ -5,7 +5,9 @@
 > prenait les lignes de la carte au pilote. Depuis 17 h 50 min 36 s, le pilote entend
 > la carte. De 18 h 06 à 18 h 12, Benjamin a monté par crans jusqu'à 2,60 (2,78 tour/s
 > au plus, au compte de la carte) ; à 18 h 14 : « Ça fonctionne ». **N'arme pas quand
-> « Carte » dit MUETTE** : les crans montent quand même. Toute la journée :
+> « Carte » dit MUETTE** : les crans montaient quand même. Depuis le 30 octobre
+> (COMMENT_253), le pilote refuse lui-même ARMER dans ce cas, et la ligne `<BOUCLE>`
+> se lit dans TD (Chboucle). Toute la journée :
 > [AVANCEES_29_OCTOBRE_2026.txt](AVANCEES_29_OCTOBRE_2026.txt).
 
 28 octobre 2026 (19 h 54 – 21 h 50) et 29 octobre (13 h 24 – 16 h). Demande de

@@ -3,6 +3,12 @@ La vitesse de rotation jusqu'à 5 tours/s : de la relecture à l'essai qui march
 
 Écrit le 29 octobre 2026 entre 18 h 20 et 19 h 10, à la demande de Benjamin : « fais un
 fichier texte dans lequel tu mets toutes les avancées d'aujourd'hui, commit et pousse ».
+RECTIFICATIF DU 30 OCTOBRE (COMMENT_253 du dépôt panneaux) : les ARMER décochés à 17 h 13 min 19 s
+et à 17 h 38 min 57 s (sections 1 et 7) coïncident à la seconde avec GARDE 14 (3 s après la
+première ligne comptée) et GARDE 15 (2 s après la deuxième ligne de positions) : ce sont
+vraisemblablement des gardes, pas des clics -- et des désarmements EN ROTATION. Depuis le 30, le
+pilote refuse ARMER quand il n'entend pas la carte, et un cran ne monte plus à l'aveugle.
+
 Trois relecteurs indépendants ont vérifié chaque affirmation contre le code, le journal
 de TD, le journal de l'IDE Arduino et git. Le journal détaillé est dans le dépôt
 panneaux-led-rotatifs : commentaires/COMMENT_251 (le 28 au soir et le 29 jusqu'à
