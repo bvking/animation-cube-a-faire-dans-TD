@@ -172,7 +172,13 @@ AVANCEES_29_OCTOBRE_2026.txt, section 8).*
 - À 5 tour/s, une lame de 1,60 m va à **~90 km/h en bout** (42 km/h à 2,30). Elle
   stocke ~42 J, 4,7 fois plus qu'à 2,30, et tire ~79 N sur son moyeu ; ce qui est
   fixé en bout de lame subit ~80 g. **Personne dans le plan des lames.**
-- **L'arrêt depuis 5,00 prend environ 6 minutes** (ARRÊT, FIN).
+- **L'arrêt depuis 5,00 prend environ 6 minutes** (ARRÊT, FIN). Depuis le 31 octobre, le
+  bouton **ARRÊT D'URGENCE** (page Chorégraphie, en tête de BOUTONS_CHORE, rouge sombre ;
+  COMMENT_255, pas encore appliqué dans TD) descend en une seule rampe, sans crans, à la part
+  de la loi du coude réglée par « force de l'ARRET D'URGENCE » (0,60 au départ : 1 min 52 s
+  depuis 5,00, 32 s depuis 2,30 ; 1,00 : 1 min 14 s et 26 s), jamais plus de 304 pas/s² ni plus
+  de 200 sous 0,25 tour/s, puis désarme à l'arrêt. Pendant l'urgence tout est refusé ; **décocher ARMER pendant l'urgence désarme tout de
+  suite** et la carte freine seule à 800 pas/s² (le chemin immédiat, à n'utiliser qu'en dernier).
 - **Ne jamais DÉSARMER en rotation rapide.** Plus aucune consigne ne part, et la
   Teensy freine seule, à 800 pas/s² : 25 fois l'accélération tenue. À 5,00, la lame
   dépasse sa cible d'une cinquantaine de tours, avec un décrochage probable. Avec
